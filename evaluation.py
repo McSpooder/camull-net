@@ -1,59 +1,128 @@
+from loader_helper import loader_helper
+from architecture import load_cam_model
+
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 
-def generate_auc(fpr, tpr, roc_auc):
-    
-    s_path = "../graphs/auc-{date:%Y-%m-%d_%H:%M:%S}.png".format(date=datetime.datetime.now())
-    
-    plt.figure()
-    lw = 2
-    plt.plot(fpr, tpr, color='darkorange',
-             lw=lw, label='ROC curve (area = %0.2f)' % roc_auc)
-    plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('Receiver operating characteristic')
-    plt.legend(loc="lower right")
-    plt.savefig(s_path)
+import os
+import glob
+
+import torch
+import torch.nn    as nn
+import torch.optim as optim
 
 
-def evaluate_model(model_in, test_dl, gen_auc=False, param_count=False):
-    
+def evaluate_model(device, uuid, ld_helper):
+
+    filein = open("log.txt", 'a')
+
+    fold = 0
+
+    filein.write("\n")
+    filein.write("==========================\n".format(fold + 1))
+    filein.write("===== Log for camull =====\n".format(fold + 1))
+    filein.write("==========================\n".format(fold + 1))
+    filein.write("\n")
+    filein.write("\n")
+
+    tot_acc = 0; tot_sens = 0; tot_spec = 0; tot_roc_auc = 0
+
+    for path in glob.glob("../weights/CN_v_AD/" + uuid + "/*"):
+        
+        print("Evaluating fold: ", fold + 1)
+
+        model   = load_cam_model(path)
+        test_dl = ld_helper.get_test_dl(fold)
+        metrics = get_fold_metrics(model, test_dl)
+
+        accuracy, sensitivity, specificity = [*metrics.values()]
+
+        if (fold == 0) : os.mkdir("../graphs/" + uuid)
+        metrics["roc_auc"] = get_roc_auc(model, test_dl, figure=True, path = "../graphs/" + uuid, fold=fold+1)
+        
+        filein.write("=====   Fold {}  =====".format(fold+1))
+        filein.write("\n")
+        filein.write("Threshold 0.5")
+        filein.write("--- Accuracy    : {}\n".format(metrics["accuracy"]))
+        filein.write("--- Sensitivity : {}\n".format(metrics["sensitivity"]))
+        filein.write("--- Specificity : {}\n".format(metrics["specificity"]))
+        filein.write("\n")
+        filein.write("(Variable Threshold)")
+        filein.write("--- ROC AUC     : {}\n".format(metrics["roc_auc"]))
+        filein.write("\n")
+
+        tot_acc += accuracy; tot_sens += sensitivity; tot_spec += specificity; tot_roc_auc += roc_auc
+        fold += 1
+
+    avg_acc     =  (tot_acc     / 5)  *  100
+    avg_sens    =  (tot_sens    / 5)  *  100
+    avg_spec    =  (tot_spec    / 5)  *  100
+    avg_roc_auc =  (tot_roc_auc / 5)  *  100 
+
+    filein.write("\n")
+    filein.write("===== Average Across 5 folds =====")
+    filein.write("\n")
+    filein.write("Threshold 0.5")
+    filein.write("--- Accuracy    : {}\n".format(avg_acc))
+    filein.write("--- Sensitivity : {}\n".format(avg_sens))
+    filein.write("--- Specificity : {}\n".format(avg_spec))
+    filein.write("\n")
+    filein.write("(Variable Threshold)")
+    filein.write("--- ROC AUC     : {}\n".format(metrics["roc_auc"]))
+    filein.write("\n")
+
+
+def get_fold_metrics(model_in, test_dl, param_count=False):
+
         accuracy, sensitivity, specificity = get_metrics(model_in, test_dl, thresh=0.5)
-        
-        if (gen_auc == True):
-            
-            fpr = [] #1-specificity
-            tpr = []
-        
-            for t in range(0, 10, 1):
-                thresh = t/10
-                _, sens, spec = get_metrics(model_in, test_dl, thresh)
-                tpr.append(sens)
-                fpr.append(1 - spec)
 
-            roc_auc = auc(fpr, tpr)
-            print("TPR rate list is: ", tpr)
-            print("FPR list is: ", fpr)
-            generate_auc(fpr, tpr, roc_auc)
-            
+        metrics = {}
+
+        metrics["accuracy"]    = accuracy
+        metrics["sensitivity"] = sensitivity
+        metrics["specificity"] = specificity
+
+        return metrics
+
+
+def get_roc_auc(model_in, test_dl, figure=False, path=None, fold=1):
+    
+    fpr = [] #1-specificity
+    tpr = []
+
+    for t in range(0, 10, 1):
+        thresh = t/10
+        _, sens, spec = get_metrics(model_in, test_dl, thresh)
+        tpr.append(sens)
+        fpr.append(1 - spec)
+
+    roc_auc = auc(fpr, tpr)
+
+    if(figure):
+
+        if (path == None):
+            path = "../graphs/auc-{date:%Y-%m-%d_%H:%M:%S}.png".format(date=datetime.datetime.now())
         else:
-            roc_auc = -1
+            #append dir
+            path = path + "/auc-fold{}".format(fold)
+        
+        plt.figure()
+        lw = 2
+        plt.plot(fpr, tpr, color='darkorange',
+                lw=lw, label='ROC curve (area = %0.2f)' % roc_auc)
+        plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('ROC Curve - Fold {}'.format(fold))
+        plt.legend(loc="lower right")
+        plt.savefig(path)
 
-        return (accuracy, sensitivity, specificity, roc_auc)
+    return roc_auc
 
 
 def get_metrics(model_in, test_dl, thresh=0.5, param_count=False):
-    
-    if (param_count):
-        
-        total_params = sum(p.numel() for p in model_in.parameters())
-        print("Total number of parameters is: ", total_params)
-        
-        total_trainable_params = sum(p.numel() for p in model_in.parameters() if p.requires_grad)
-        print("Total number of trainable parameters is: ", total_trainable_params)
         
     correct = 0; total = 0
     model_in.eval()

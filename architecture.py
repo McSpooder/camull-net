@@ -5,8 +5,9 @@ import torch.nn.functional as F
 import numpy as np
 
 
+
 class ConvBlock(nn.Module):
-    
+
     def __init__(self, c_in, c_out, ks, k_stride=1):
         
         super().__init__()
@@ -29,27 +30,7 @@ class ConvBlock(nn.Module):
         return out
 
 
-    
-class FCBlock(nn.Module):
-    
-    def __init__(self, chan_in, units_out):
-        
-        super().__init__()
-        self.fc = nn.Linear(chan_in, units_out)
-        self.bn = nn.BatchNorm1d(units_out)
-        self.elu = nn.ELU()
-        self.dropout = nn.Dropout(p=0.1)
 
-    def forward(self, x):
-        
-        out = self.fc(x)
-        out = self.bn(out)
-        out = self.elu(out)
-        out = self.dropout(out)
-        return out 
-
-    
-    
 class ConvBlock2(nn.Module):
     
     def __init__(self, chans, ks, k_stride=1):
@@ -78,7 +59,27 @@ class ConvBlock2(nn.Module):
         
         return out
     
+
+
+class FCBlock(nn.Module):
     
+    def __init__(self, chan_in, units_out):
+        
+        super().__init__()
+        self.fc = nn.Linear(chan_in, units_out)
+        self.bn = nn.BatchNorm1d(units_out)
+        self.elu = nn.ELU()
+        self.dropout = nn.Dropout(p=0.1)
+
+    def forward(self, x):
+        
+        out = self.fc(x)
+        out = self.bn(out)
+        out = self.elu(out)
+        out = self.dropout(out)
+        return out 
+    
+
 
 class Camull(nn.Module):
     
@@ -92,11 +93,8 @@ class Camull(nn.Module):
         self.stack1_b = nn.Sequential(ConvBlock(1, 24, (11,11,11), 2),
                                      ConvBlock(24, 48, (5,5,5)))
 
-        self.fcblock = nn.Sequential(FCBlock(21, 32),
-                                     FCBlock(32, 10))
-        
         #seperable convolutions
-        self.stack2 = nn.Sequential(ConvBlock2(96, [3,3,3]),
+        self.stack2  = nn.Sequential(ConvBlock2(96, [3,3,3]),
                                    ConvBlock2(96, [3,3,3]),
                                    ConvBlock2(96, [3,3,3]))
 
@@ -108,11 +106,14 @@ class Camull(nn.Module):
         self.stack3_b = nn.Sequential(ConvBlock(48, 24, (3,3,3)),
                                      ConvBlock(24, 8, (3,3,3)))
 
+        self.fcblock = nn.Sequential(FCBlock(21, 32),
+                                     FCBlock(32, 10))
+
         self.flat = nn.Flatten()
-        self.fc1 = FCBlock(128, 10)
-        self.fc2 = FCBlock(20, 4)
-        self.lin = nn.Linear(4, 1)
-        self.sig = nn.Sigmoid()
+        self.fc1  = FCBlock(128, 10)
+        self.fc2  = FCBlock(20, 4)
+        self.lin  = nn.Linear(4, 1)
+        self.sig  = nn.Sigmoid()
 
 
     #Performing a grouped convolutional stack
@@ -122,6 +123,7 @@ class Camull(nn.Module):
         out_a     = x[:,:bound]
         out_b     = x[:,bound:]  
             
+
         out_a     = self.stack3_a(out_a)
         out_b     = self.stack3_b(out_b)
         out       = torch.cat((out_a, out_b), 1)
@@ -142,14 +144,17 @@ class Camull(nn.Module):
     def forward(self, x):
         
         mri, clin = x
+
         out_a     = self.stack1(mri)
         out_b     = self.stack1_b(mri)
-        out       = torch.cat((out_a, out_b), 1) #1 as 0 is batch size    
+        out       = torch.cat((out_a, out_b), 1) #1 as ind 0 is batch size    
         
+
         identity  = out
         out       = self.stack2(out)
         out       = out + identity
         
+
         out       = self.s3_forward(out)
         out       = self.cat_with_clin(out, clin)
 
@@ -161,6 +166,6 @@ class Camull(nn.Module):
         return out
     
        
-def load_model(path):
+def load_cam_model(path):
      model = torch.load(path)
      return model

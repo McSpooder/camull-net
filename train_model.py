@@ -1,30 +1,26 @@
 import os
-from enum import Enum
 import datetime
 import glob
 import pathlib
+from enum      import Enum
 from tqdm.auto import tqdm
 
-import numpy as np
-import pandas as pd
+import uuid
+
+import numpy   as np
+import pandas  as pd
 import nibabel as nib
 
 from data_declaration import *
-from loader_helper import loader_helper
-from architecture import *
-import evaluation
+from loader_helper    import loader_helper
+from architecture     import *
+from evaluation       import evaluate_model
 
 
 import torch
-import torch.nn as nn
+import torch.nn    as nn
 import torch.optim as optim
 
-
-
-ld_helper = loader_helper()
-
-EPOCHS = 0
-optimizer = None
 
 if torch.cuda.is_available():
     device = torch.device("cuda:0")
@@ -32,27 +28,22 @@ if torch.cuda.is_available():
 else:
     device = torch.device("cpu")
     print("Running on the CPU")
+
         
-         
-            
-class Task(Enum):
-    CN_v_AD = 1
-    sMCI_v_pMCI = 2
-        
-        
-def save_weights(model_in, model_name, fold=0, task : Task = None):
+def save_weights(model_in, uuid, fold=1, task : Task = None):
     
     root_path = ""
     
     if (task == Task.CN_v_AD):
-        root_path = "../weights/CN_v_AD/" + model_name + "/"
+        root_path = "../weights/CN_v_AD/"     + uuid + "/"
     else:
-        root_path = "../weights/sMCI_v_pMCI/" + model_name + "/"
+        root_path = "../weights/sMCI_v_pMCI/" + uuid + "/"
     
+    if fold == 1 : os.mkdir(root_path) #otherwise it already exists
     
     while (True):    
         
-        s_path = root_path + "fold_{}_weights-{date:%Y-%m-%d_%H:%M:%S}".format( date=datetime.datetime.now())
+        s_path = root_path + "fold_{}_weights-{date:%Y-%m-%d_%H:%M:%S}".format(fold, date=datetime.datetime.now())
         
         if (os.path.exists(s_path)):
             print("Path exists. Choosing another path.")
@@ -72,12 +63,12 @@ def load_model(arch, path=None):
             model = get_model(path)
         
         
-    else: #must be camnet       
+    else: #must be camull       
         
         if (path == None):
-            model = load_camnet_model("../weights/camnet/fold_0_weights-2020-04-09_18_29_02")
+            model = load_cam_model("../weights/camnet/fold_0_weights-2020-04-09_18_29_02")
         else:
-            model = load_camnet_model(path)
+            model = load_cam_model(path)
             
 
     return model
@@ -123,54 +114,40 @@ def train_loop(model_in, train_dl, epochs):
         tqdm.write("Epoch: {}/{}, train loss: {}".format(i, epochs, round(loss.item(), 5)))
         
 
-def train_camull(model=None, epochs=150, task: Task = None):
-    
-    k_folds = 5
-    indices = ld_helper.get_indices()
+def train_camull(ld_helper, k_folds=5, model = None, epochs=40):
 
-    filein = open("log.txt", 'a')
-    filein.write("===== Log for camull =====\n")
-    filein.write("\n")
-    
+    task = ld_helper.get_task()
+    uuid_     = uuid.uuid4().hex
     model_cop = model
 
-    for k in range(k_folds):
-
-        filein.write("Training model on fold {}\n".format(k))
-        train_dl, test_dl = ld_helper.make_loaders(indices[k][0], indices[k][1])
+    for k_ind in range(k_folds):
         
         if (model_cop == None):
             model = build_arch()
         else:
             model = model_cop
-        
+   
+        train_dl = ld_helper.get_train_dl(k_ind)
         train_loop(model, train_dl, epochs)
-        save_weights(model, fold=k, task=task)
+        save_weights(model, uuid_, fold=k_ind+1, task=task)
+    
+    return uuid_
+    
 
-        accuracy, sensitivity, specificity, roc_auc = get_metrics(model, test_dl, gen_auc=True)
-
-        filein.write("--- Accuracy    : {}\n".format(accuracy))
-        filein.write("--- Sensitivity : {}\n".format(sensitivity))
-        filein.write("--- Specificity : {}\n".format(specificity))
-        filein.write("--- AUC         : {}\n".format(roc_auc))
-        filein.write("\n")
-        
-     #calculate average model metrics
-    
-    filein.close()
-    
-    
-    
 def main():
-    
-    #indices           = ld_helper.get_indices()
-    #train_dl, test_dl = ld_helper.make_loaders(indices[0][0], indices[0][1])
-    
-    #model = load_model("camnet", "../weights/camnet/fold_2_weights-2020-04-12_15:48:22")
-    
-    #ld_helper.change_ds_labels(["sMCI", "pMCI"])
-    train_camull(epochs=40, task=Task.CN_v_AD)
 
-#   accuracy, sensitivity, specificity, roc_auc = evaluate_model(model, test_dl, param_count=True) 
+    #CN v AD
+    ld_helper = loader_helper(task=Task.CN_v_AD)
+    # uuid = train_camull(ld_helper, epochs=40)
+    evaluate_model("df79b796a93649e28aa055dcaaffa5c4", ld_helper)
+
+    #transfer learning for pMCI v sMCI
+    # ld_helper.change_task(Task.sMCI_v_pMCI)
+    # model = load_model("path/to/best/model")
+    # train_camull(ld_helper, epochs=40)
+    # evaluate_model(uuid, ld_helper)
+
+
+
     
 main()

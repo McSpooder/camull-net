@@ -1,16 +1,23 @@
 import os
+from enum import Enum
+import glob
+import pathlib
+
 import numpy as np
 import nibabel as nib
 import matplotlib.pyplot as plt
-import torch
-import glob
 import pandas as pd
-import pathlib
 
+import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
 
 
+class Task(Enum):
+    CN_v_AD = 1
+    sMCI_v_pMCI = 2
+
+    
 def get_im_id(path):
 
     fname = path.stem
