@@ -11,9 +11,11 @@ import torch
 import torch.nn    as nn
 import torch.optim as optim
 
+device = None
 
-def evaluate_model(device, uuid, ld_helper):
+def evaluate_model(device_in, uuid, ld_helper):
 
+    device = device_in
     filein = open("log.txt", 'a')
 
     fold = 0
@@ -37,8 +39,8 @@ def evaluate_model(device, uuid, ld_helper):
 
         accuracy, sensitivity, specificity = [*metrics.values()]
 
-        if (fold == 0) : os.mkdir("../graphs/" + uuid)
-        metrics["roc_auc"] = get_roc_auc(model, test_dl, figure=True, path = "../graphs/" + uuid, fold=fold+1)
+        if (not os.path.exists("../graphs/" + uuid)) : os.mkdir("../graphs/" + uuid)
+        roc_auc = get_roc_auc(model, test_dl, figure=True, path = "../graphs/" + uuid, fold=fold+1)
         
         filein.write("=====   Fold {}  =====".format(fold+1))
         filein.write("\n")
@@ -48,16 +50,16 @@ def evaluate_model(device, uuid, ld_helper):
         filein.write("--- Specificity : {}\n".format(metrics["specificity"]))
         filein.write("\n")
         filein.write("(Variable Threshold)")
-        filein.write("--- ROC AUC     : {}\n".format(metrics["roc_auc"]))
+        filein.write("--- ROC AUC     : {}\n".format(roc_auc))
         filein.write("\n")
 
         tot_acc += accuracy; tot_sens += sensitivity; tot_spec += specificity; tot_roc_auc += roc_auc
         fold += 1
 
-    avg_acc     =  (tot_acc     / 5)  *  100
-    avg_sens    =  (tot_sens    / 5)  *  100
-    avg_spec    =  (tot_spec    / 5)  *  100
-    avg_roc_auc =  (tot_roc_auc / 5)  *  100 
+    avg_acc     =  (tot_acc     / 5)
+    avg_sens    =  (tot_sens    / 5)
+    avg_spec    =  (tot_spec    / 5)
+    avg_roc_auc =  (tot_roc_auc / 5)
 
     filein.write("\n")
     filein.write("===== Average Across 5 folds =====")
@@ -68,8 +70,9 @@ def evaluate_model(device, uuid, ld_helper):
     filein.write("--- Specificity : {}\n".format(avg_spec))
     filein.write("\n")
     filein.write("(Variable Threshold)")
-    filein.write("--- ROC AUC     : {}\n".format(metrics["roc_auc"]))
+    filein.write("--- ROC AUC     : {}\n".format(avg_roc_auc))
     filein.write("\n")
+
 
 
 def get_fold_metrics(model_in, test_dl, param_count=False):

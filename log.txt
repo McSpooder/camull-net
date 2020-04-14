@@ -2,3 +2,24 @@
 =====  Log File   =====
 =======================
 
+
+==========================
+===== Log for camull =====
+==========================
+
+
+=====   Fold 1  =====
+Threshold 0.5--- Accuracy    : 0.947
+--- Sensitivity : 0.867
+--- Specificity : 1.0
+
+(Variable Threshold)--- ROC AUC     : 0.9867
+
+
+===== Average Across 5 folds =====
+Threshold 0.5--- Accuracy    : 18.939999999999998
+--- Sensitivity : 17.34
+--- Specificity : 20.0
+
+(Variable Threshold)--- ROC AUC     : 19.734
+
