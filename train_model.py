@@ -143,8 +143,8 @@ def main():
 
     #transfer learning for pMCI v sMCI
     # ld_helper.change_task(Task.sMCI_v_pMCI)
-    # model = load_model("path/to/best/model")
-    # train_camull(ld_helper, epochs=40)
+    # model = load_model("camull", "../weights/CN_v_AD/df79b796a93649e28aa055dcaaffa5c4/fold_1_weights-2020-04-14_14:21:43")
+    # uuid  = train_camull(ld_helper, model=model, epochs=40)
     # evaluate_model(uuid, ld_helper)
 
 

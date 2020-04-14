@@ -51,10 +51,12 @@ class loader_helper:
             self.labels = ["sMCI", "pMCI"]
 
         self.dataset = MRIDataset(root_dir     = "../data4/alldata/",
-                            labels       = labels_in,
+                            labels       = self.labels,
                             transform    = transforms.Compose([
                                 ToTensor()])
                             )
+
+        self.set_indices()
 
         
     def set_indices(self, total_folds=5):
