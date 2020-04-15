@@ -23,3 +23,182 @@ Threshold 0.5--- Accuracy    : 18.939999999999998
 
 (Variable Threshold)--- ROC AUC     : 19.734
 
+
+==========================
+===== Log for camull =====
+==========================
+
+
+=====   Fold 1  =====
+Threshold 0.5--- Accuracy    : 0.763
+--- Sensitivity : 0.4
+--- Specificity : 1.0
+
+(Variable Threshold)--- ROC AUC     : 0.9425335
+
+=====   Fold 2  =====
+Threshold 0.5--- Accuracy    : 0.711
+--- Sensitivity : 0.382
+--- Specificity : 0.976
+
+(Variable Threshold)--- ROC AUC     : 0.8912764999999999
+
+=====   Fold 3  =====
+Threshold 0.5--- Accuracy    : 0.816
+--- Sensitivity : 0.588
+--- Specificity : 1.0
+
+(Variable Threshold)--- ROC AUC     : 0.949399
+
+=====   Fold 4  =====
+Threshold 0.5--- Accuracy    : 0.895
+--- Sensitivity : 0.853
+--- Specificity : 0.929
+
+(Variable Threshold)--- ROC AUC     : 0.958509
+
+=====   Fold 5  =====
+Threshold 0.5--- Accuracy    : 0.763
+--- Sensitivity : 0.471
+--- Specificity : 1.0
+
+(Variable Threshold)--- ROC AUC     : 0.955565
+
+
+===== Average Across 5 folds =====
+Threshold 0.5--- Accuracy    : 0.7896
+--- Sensitivity : 0.5388
+--- Specificity : 0.9810000000000001
+
+(Variable Threshold)--- ROC AUC     : 0.9394566
+
+
+==========================
+===== Log for camull =====
+==========================
+
+
+=====   Fold 1  =====
+Threshold 0.5--- Accuracy     : 0.947
+--- Sensitivity  : 0.871
+--- Specificity  : 1.0
+--- Youdens stat : 0.871
+
+(Variable Threshold)--- ROC AUC     : 0.9871
+
+
+===== Average Across 5 folds =====
+Threshold 0.5--- Accuracy    : 0.18939999999999999
+--- Sensitivity : 0.1742
+--- Specificity : 0.2
+
+(Variable Threshold)--- ROC AUC     : 0.19741999999999998
+
+
+==========================
+===== Log for camull =====
+==========================
+
+
+=====   Fold 1  =====
+Threshold 0.3--- Accuracy     : 0.895
+--- Sensitivity  : 0.935
+--- Specificity  : 0.867
+--- Youdens stat : 0.802
+
+(Variable Threshold)--- ROC AUC     : 0.9477135
+
+=====   Fold 2  =====
+Threshold 0.3--- Accuracy     : 0.868
+--- Sensitivity  : 0.794
+--- Specificity  : 0.929
+--- Youdens stat : 0.7230000000000001
+
+(Variable Threshold)--- ROC AUC     : 0.890964
+
+=====   Fold 3  =====
+Threshold 0.4--- Accuracy     : 0.882
+--- Sensitivity  : 0.848
+--- Specificity  : 0.907
+--- Youdens stat : 0.7549999999999999
+
+(Variable Threshold)--- ROC AUC     : 0.9469
+
+=====   Fold 4  =====
+Threshold 0.5--- Accuracy     : 0.895
+--- Sensitivity  : 0.848
+--- Specificity  : 0.93
+--- Youdens stat : 0.778
+
+(Variable Threshold)--- ROC AUC     : 0.958252
+
+=====   Fold 5  =====
+Threshold 0.4--- Accuracy     : 0.895
+--- Sensitivity  : 0.939
+--- Specificity  : 0.86
+--- Youdens stat : 0.7989999999999999
+
+(Variable Threshold)--- ROC AUC     : 0.9506175
+
+
+===== Average Across 5 folds =====
+Threshold 0.5--- Accuracy    : 0.8870000000000001
+--- Sensitivity : 0.8728
+--- Specificity : 0.8986000000000001
+
+(Variable Threshold)--- ROC AUC     : 0.9388894000000001
+
+
+==========================
+===== Log for camull =====
+==========================
+
+
+=====   Fold 1  =====
+Threshold 0.3--- Accuracy     : 0.824
+--- Sensitivity  : 0.423
+--- Specificity  : 0.951
+--- Youdens stat : 0.3739999999999999
+
+(Variable Threshold)--- ROC AUC     : 0.7524035
+
+=====   Fold 2  =====
+Threshold 0.3--- Accuracy     : 0.843
+--- Sensitivity  : 0.69
+--- Specificity  : 0.899
+--- Youdens stat : 0.589
+
+(Variable Threshold)--- ROC AUC     : 0.8367555
+
+=====   Fold 3  =====
+Threshold 0.3--- Accuracy     : 0.88
+--- Sensitivity  : 0.759
+--- Specificity  : 0.924
+--- Youdens stat : 0.683
+
+(Variable Threshold)--- ROC AUC     : 0.8604965
+
+=====   Fold 4  =====
+Threshold 0.2--- Accuracy     : 0.731
+--- Sensitivity  : 0.966
+--- Specificity  : 0.646
+--- Youdens stat : 0.6120000000000001
+
+(Variable Threshold)--- ROC AUC     : 0.8889164999999999
+
+=====   Fold 5  =====
+Threshold 0.3--- Accuracy     : 0.87
+--- Sensitivity  : 0.69
+--- Specificity  : 0.937
+--- Youdens stat : 0.627
+
+(Variable Threshold)--- ROC AUC     : 0.8829675
+
+
+===== Average Across 5 folds =====
+Threshold 0.5--- Accuracy    : 0.8295999999999999
+--- Sensitivity : 0.7056
+--- Specificity : 0.8714000000000001
+
+(Variable Threshold)--- ROC AUC     : 0.8443079000000001
+

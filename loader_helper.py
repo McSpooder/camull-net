@@ -34,6 +34,14 @@ class loader_helper:
         return self.task
 
 
+    def get_task_string(self):
+
+        if (self.task == Task.CN_v_AD):
+            return "CN_v_AD"
+        else:
+            return "sMCI_v_pMCI"
+
+
     def change_ds_labels(self, labels_in):
         
         self.dataset = MRIDataset(root_dir     = "../data4/alldata/",
@@ -45,6 +53,8 @@ class loader_helper:
     
     def change_task(self, task: Task):
 
+        self.task = task
+        
         if (task == Task.CN_v_AD):
             self.labels = ["CN", "AD"]
         else:

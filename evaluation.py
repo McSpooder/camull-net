@@ -1,5 +1,6 @@
-from loader_helper import loader_helper
-from architecture import load_cam_model
+from loader_helper    import loader_helper
+from architecture     import load_cam_model
+from data_declaration import Task
 
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
@@ -15,8 +16,17 @@ device = None
 
 def evaluate_model(device_in, uuid, ld_helper):
 
-    device = device_in
-    filein = open("log.txt", 'a')
+    device     = device_in
+    filein     = open("log.txt", 'a')
+
+    log_path = "../logs/" + uuid + ".txt"
+
+    if (os.path.exists(log_path)):
+        filein     = open(log_path, 'a')
+    else:
+        filein     = open(log_path, 'w')
+        
+    task_str   = ld_helper.get_task_string()
 
     fold = 0
 
@@ -29,25 +39,26 @@ def evaluate_model(device_in, uuid, ld_helper):
 
     tot_acc = 0; tot_sens = 0; tot_spec = 0; tot_roc_auc = 0
 
-    for path in glob.glob("../weights/CN_v_AD/" + uuid + "/*"):
+    srch_path = "../weights/{}/".format(task_str) + uuid + "/*"
+    for path in glob.glob(srch_path):
         
         print("Evaluating fold: ", fold + 1)
 
         model   = load_cam_model(path)
         test_dl = ld_helper.get_test_dl(fold)
-        metrics = get_fold_metrics(model, test_dl)
-
-        accuracy, sensitivity, specificity = [*metrics.values()]
 
         if (not os.path.exists("../graphs/" + uuid)) : os.mkdir("../graphs/" + uuid)
-        roc_auc = get_roc_auc(model, test_dl, figure=True, path = "../graphs/" + uuid, fold=fold+1)
-        
+        metrics = get_roc_auc(model, test_dl, figure=True, path = "../graphs/" + uuid, fold=fold+1)
+        accuracy, sensitivity, specificity, roc_auc, you_max, you_thresh = [*metrics]
+
         filein.write("=====   Fold {}  =====".format(fold+1))
         filein.write("\n")
-        filein.write("Threshold 0.5")
-        filein.write("--- Accuracy    : {}\n".format(metrics["accuracy"]))
-        filein.write("--- Sensitivity : {}\n".format(metrics["sensitivity"]))
-        filein.write("--- Specificity : {}\n".format(metrics["specificity"]))
+        filein.write("Threshold {}".format(you_thresh))
+        filein.write("\n")
+        filein.write("--- Accuracy     : {}\n".format(accuracy))
+        filein.write("--- Sensitivity  : {}\n".format(sensitivity))
+        filein.write("--- Specificity  : {}\n".format(specificity))
+        filein.write("--- Youdens stat : {}\n".format(you_max))
         filein.write("\n")
         filein.write("(Variable Threshold)")
         filein.write("--- ROC AUC     : {}\n".format(roc_auc))
@@ -64,7 +75,6 @@ def evaluate_model(device_in, uuid, ld_helper):
     filein.write("\n")
     filein.write("===== Average Across 5 folds =====")
     filein.write("\n")
-    filein.write("Threshold 0.5")
     filein.write("--- Accuracy    : {}\n".format(avg_acc))
     filein.write("--- Sensitivity : {}\n".format(avg_sens))
     filein.write("--- Specificity : {}\n".format(avg_spec))
@@ -74,32 +84,37 @@ def evaluate_model(device_in, uuid, ld_helper):
     filein.write("\n")
 
 
-
-def get_fold_metrics(model_in, test_dl, param_count=False):
-
-        accuracy, sensitivity, specificity = get_metrics(model_in, test_dl, thresh=0.5)
-
-        metrics = {}
-
-        metrics["accuracy"]    = accuracy
-        metrics["sensitivity"] = sensitivity
-        metrics["specificity"] = specificity
-
-        return metrics
-
-
 def get_roc_auc(model_in, test_dl, figure=False, path=None, fold=1):
     
     fpr = [] #1-specificity
     tpr = []
 
+    youden_s_lst = []
+
+    opt_acc = 0; opt_sens = 0; opt_spec = 0
+    youdens_s_max = 0
+    optimal_thresh = 0
+
     for t in range(0, 10, 1):
+
         thresh = t/10
-        _, sens, spec = get_metrics(model_in, test_dl, thresh)
+        acc, sens, spec = get_metrics(model_in, test_dl, thresh)
         tpr.append(sens)
         fpr.append(1 - spec)
 
+
+        youdens_s = sens + spec - 1
+
+        if (youdens_s > youdens_s_max): 
+
+            youdens_s_max = youdens_s; 
+            optimal_thresh = thresh
+            opt_acc = acc; opt_sens = sens; opt_spec = spec
+
+
     roc_auc = auc(fpr, tpr)
+
+    metrics = [opt_acc, opt_sens, opt_spec, roc_auc, youdens_s_max, optimal_thresh]
 
     if(figure):
 
@@ -122,7 +137,7 @@ def get_roc_auc(model_in, test_dl, figure=False, path=None, fold=1):
         plt.legend(loc="lower right")
         plt.savefig(path)
 
-    return roc_auc
+    return metrics
 
 
 def get_metrics(model_in, test_dl, thresh=0.5, param_count=False):
