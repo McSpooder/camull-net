@@ -67,10 +67,11 @@ def get_acq_year(im_data_id, im_df):
 def get_label(path, labels):
     
     label_str = path.parent.stem
-    label = None
+    label     = None
+
     if (label_str == labels[0]):
         label = np.array([0], dtype=np.double)
-    elif (label_str) == labels[1]:
+    elif (label_str == labels[1]):
         label = np.array([1], dtype=np.double)
         
     return label
@@ -85,20 +86,14 @@ def get_mri(path):
     return mri
 
 
-def get_clinical(ptid, acq_year, clin_df):
+def get_clinical(im_id, clin_df):
 
     clinical = np.zeros(21)
 
-    rows = clin_df.loc[clin_df['PTID'] == ptid]
+    row     = clin_df.loc[clin_df["Image Data ID"] == im_id]
 
-    i = -1
-
-    for i in range(len(rows)):
-        if(acq_year in rows.iloc[i]['EXAMDATE']):
-            break
-
-    for k in range(3, 24):
-        clinical[k-3] = rows.iloc[i][k]
+    for k in range(1, 22):
+        clinical[k-1] = row.iloc[0][k]
 
     return clinical
 
@@ -114,10 +109,8 @@ class MRIDataset(Dataset):
         self.len = 0
         self.labels = labels
         
-        self.clin_data = pd.read_csv("../data3/clinical_w_labels_d3_2.csv")
-        self.image_data = pd.read_csv("../data3/hsp_masked_3_09_2020.csv")
+        self.clin_data = pd.read_csv("../data4/lon_clin.csv")
               
-        
         train_dirs = []
         for label in labels:
             train_dirs.append(root_dir + label)
@@ -134,7 +127,6 @@ class MRIDataset(Dataset):
         return self.len 
     
     
-    
     def __getitem__(self, idx):
         
         if torch.is_tensor(idx):
@@ -144,14 +136,11 @@ class MRIDataset(Dataset):
     
         while(repeat):
             try:
-                path = self.directories[idx]
-                im_id = get_im_id(path)
-                ptid = get_ptid(path)
-                acq_year = get_acq_year(im_id, self.image_data)
-
-                mri = get_mri(path)
-                clinical = get_clinical(ptid, acq_year, self.clin_data)
-                label = get_label(path, self.labels)
+                path     = self.directories[idx]
+                im_id    = get_im_id(path)
+                mri      = get_mri(path)
+                clinical = get_clinical(im_id, self.clin_data)
+                label    = get_label(path, self.labels)
 
                 sample = {'mri': mri, 'clinical':clinical, 'label':label}
 
