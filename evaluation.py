@@ -7,6 +7,7 @@ from sklearn.metrics import roc_curve, auc
 
 import os
 import glob
+import datetime
 
 import torch
 import torch.nn    as nn
@@ -31,9 +32,10 @@ def evaluate_model(device_in, uuid, ld_helper):
     fold = 0
 
     filein.write("\n")
-    filein.write("==========================\n".format(fold + 1))
-    filein.write("===== Log for camull =====\n".format(fold + 1))
-    filein.write("==========================\n".format(fold + 1))
+    filein.write("==========================\n")
+    filein.write("===== Log for camull =====\n")
+    filein.write("==========================\n")
+    filein.write("----- Date: {date:%Y-%m-%d_%H:%M:%S} -----\n".format(date=datetime.datetime.now()))
     filein.write("\n")
     filein.write("\n")
 
@@ -122,7 +124,7 @@ def get_roc_auc(model_in, test_dl, figure=False, path=None, fold=1):
             path = "../graphs/auc-{date:%Y-%m-%d_%H:%M:%S}.png".format(date=datetime.datetime.now())
         else:
             #append dir
-            path = path + "/auc-fold{}".format(fold)
+            path = path + "/auc-fold{}-{date:%Y-%m-%d_%H:%M:%S}.png".format(fold, date=datetime.datetime.now())
         
         plt.figure()
         lw = 2
