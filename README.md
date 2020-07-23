@@ -10,6 +10,12 @@ The code was developed as part of my dissertation at the university of Hull. You
   * Multiple concurrent data streams
     * MRI Data
     * Clinical Data
+* Program
+  * Saves and loads model
+  * Supports k-fold cross validation
+  * Logs the train and test loss
+  * Outputs Area under the ROC curve for each k-fold
+  * Saves each model under a unique identifier
   
 ## Requirements
   
