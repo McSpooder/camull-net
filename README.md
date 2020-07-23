@@ -3,10 +3,10 @@ An implementation of the Cambridge 3D convolutional network for the classificati
 https://www.sciencedirect.com/science/article/abs/pii/S105381191930031X
 
 Features
-*3D seperable convolution to reduce number of parameters and hence overfitting.
-*Multiple concurrent data streams
-*MRI Data
-*Clinical Data
+* 3D seperable convolution to reduce number of parameters and hence overfitting.
+* Multiple concurrent data streams
+- MRI Data
+- Clinical Data
   
 | Library      | Version     | Purpose     |
 | :------------- | :----------: | -----------: |
