@@ -1,12 +1,17 @@
 # camull-net
-An implementation of the Cambridge 3D convolutional network for the classification of Alzheimer's disease. This architecture is described in the following paper 
-https://www.sciencedirect.com/science/article/abs/pii/S105381191930031X
+An implementation of the Cambridge parameter efficient 3D convolutional network for the classification of Alzheimer's disease in pytorch. The architecture is described in detail in this [link](https://www.sciencedirect.com/science/article/abs/pii/S105381191930031X "paper").
 
-Features
-* 3D seperable convolution to reduce number of parameters and hence overfitting.
-* Multiple concurrent data streams
-- MRI Data
-- Clinical Data
+The code was developed as part of my dissertation at the university of Hull. You can read more about it in this medium [link](https://medium.com/@hextra_19712/deep-learning-for-alzheimers-classification-57611161e442 "article").
+
+## Features
+
+* Neural Net
+  * 3D seperable convolution to reduce number of parameters and hence overfitting.
+  * Multiple concurrent data streams
+    * MRI Data
+    * Clinical Data
+  
+## Requirements
   
 | Library      | Version     | Purpose     |
 | :------------- | :----------: | -----------: |
