@@ -1,7 +1,7 @@
 # camull-net
 An implementation of the Cambridge parameter efficient 3D convolutional network for the classification of Alzheimer's disease in pytorch. The architecture is described in detail in this [link](https://www.sciencedirect.com/science/article/abs/pii/S105381191930031X "paper").
 
-The code was developed as part of my dissertation at the university of Hull. You can read more about it in this medium [link](https://medium.com/@hextra_19712/deep-learning-for-alzheimers-classification-57611161e442 "article").
+The code was developed as part of my dissertation at the university of Hull. You can read more about it, including the data required, in this medium [link](https://medium.com/@hextra_19712/deep-learning-for-alzheimers-classification-57611161e442 "article").
 
 ## Features
 
@@ -26,7 +26,10 @@ The code was developed as part of my dissertation at the university of Hull. You
 | Nibabel  | 3.0.0 | Library for loading in MRI scans into python  |
 | Tqdm  | 4.42.1 | library for outputting progress to the console.  |
 
-
+## How to use
+1. Run "python train_model.py"
+2. Wait about 20 mins, grab some snacks.
+3. Look in the save folder for logs and graphs.
 
 To read an explanation on this checkout this medium article. 
 https://medium.com/@hextra_19712/deep-learning-for-alzheimers-classification-57611161e442?sk=ebc8035cead352f51f7d0e105a69a6c7
