@@ -18,13 +18,25 @@ The code was developed as part of my dissertation at the university of Hull. You
   * Saves each model under a unique identifier
   
 ## Requirements
+
+The following requirements are contained within the requirements.yml file. To install them just run:
+conda env create -f environment.yml
   
 | Library      | Version     | Purpose     |
 | :------------- | :----------: | -----------: |
 |  Pytorch | 1.4.0   | Deep learning library for tensor transformations    |
+| Torchvision | 0.2.2 | library required by pytorch |
 | Numpy  | 1.18.1 | Datascience library for creating and manipulating arrays in python  |
+| sklearn | 0.23 | Machine learning library used to output area under the curve and other stats. |
+| matplotlib | 3.1.2 | A visualization library required by sklearn to generate the 2D graphs. |
+| Pandas | 0.25.3 | Datascience library for working with tabular data |
 | Nibabel  | 3.0.0 | Library for loading in MRI scans into python  |
 | Tqdm  | 4.42.1 | library for outputting progress to the console.  |
+
+
+## Data
+
+You must place the data folder in a directory above the project folder. The data folder must contain a csv file with the clinical data and a folder containing the MRI images for each class. The data can be obtained from the ADNI website.
 
 ## How to use
 1. Run "python train_model.py"
