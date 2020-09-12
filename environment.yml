@@ -1,0 +1,6 @@
+name: cam-env
+dependencies:
+  - numpy
+  - pandas
+  - tqdm
+  - pytorch
