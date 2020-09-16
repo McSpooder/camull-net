@@ -20,7 +20,9 @@ The code was developed as part of my dissertation at the university of Hull. You
 ## Requirements
 
 The following requirements are contained within the requirements.yml file. To install them just run:
-conda env create -f environment.yml
+```
+$ conda env create -f environment.yml
+```
   
 | Library      | Version     | Purpose     |
 | :------------- | :----------: | -----------: |
@@ -39,10 +41,10 @@ conda env create -f environment.yml
 You must place the data folder in a directory above the project folder. The data folder must contain a csv file with the clinical data and a folder containing the MRI images for each class. The data can be obtained from the ADNI website.
 
 ## How to use
-1. Place your data in the directory above. (See wiki) 
+1. Place your data in the directory above. (See ![wiki](https://github.com/McSpooder/camull_net/wiki/Data-Requirements)) 
 2. Run "python train_model.py"
-3. Wait about 20 mins, grab some snacks.
-4. Look in the save folder for logs and graphs.
+3. Wait about 20 mins; grab some snacks.
+4. Look in the save folder for logs and graphs (..\graphs\, ..\logs\).
 
 To read an explanation on this checkout this medium article. 
 https://medium.com/@hextra_19712/deep-learning-for-alzheimers-classification-57611161e442?sk=ebc8035cead352f51f7d0e105a69a6c7
