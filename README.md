@@ -20,9 +20,9 @@ The code was developed as part of my dissertation at the university of Hull. You
 ## Requirements
 
 The following requirements are contained within the requirements.yml file. To install them just run:
-'''
+```
 $ conda env create -f environment.yml
-'''
+```
   
 | Library      | Version     | Purpose     |
 | :------------- | :----------: | -----------: |
