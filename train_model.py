@@ -138,14 +138,14 @@ def main():
 
     #CN v AD
     ld_helper = loader_helper(task=Task.CN_v_AD)
-    #uuid = train_camull(ld_helper, epochs=40)
-    #evaluate_model(device, "c51bf83c4455416e8bc8b1ebbc8b75ca", ld_helper)
+    uuid = train_camull(ld_helper, epochs=40)
+    evaluate_model(device, uuid, ld_helper)
 
     #transfer learning for pMCI v sMCI
-    ld_helper.change_task(Task.sMCI_v_pMCI)
-    model = load_model("camull", "../weights/CN_v_AD/c51bf83c4455416e8bc8b1ebbc8b75ca/fold_5_weights-2020-04-29_13:17:33")
-    uuid  = train_camull(ld_helper, model=model, epochs=40)
-    evaluate_model(device, uuid, ld_helper)
+    # ld_helper.change_task(Task.sMCI_v_pMCI)
+    # model = load_model("camull", uuid)
+    # uuid  = train_camull(ld_helper, model=model, epochs=40)
+    # evaluate_model(device, uuid, ld_helper)
 
     
 main()

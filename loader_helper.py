@@ -20,7 +20,7 @@ class loader_helper:
         else:
             self.labels = ["sMCI", "pMCI"]
 
-        self.dataset = MRIDataset(root_dir="../data4/alldata/",
+        self.dataset = MRIDataset(root_dir="../data/",
                  labels=self.labels,
                 transform=transforms.Compose([
                     ToTensor()
@@ -44,7 +44,7 @@ class loader_helper:
 
     def change_ds_labels(self, labels_in):
         
-        self.dataset = MRIDataset(root_dir     = "../data4/alldata/",
+        self.dataset = MRIDataset(root_dir     = "../data/",
                                   labels       = labels_in,
                                   transform    = transforms.Compose([
                                       ToTensor()])
@@ -60,7 +60,7 @@ class loader_helper:
         else:
             self.labels = ["sMCI", "pMCI"]
 
-        self.dataset = MRIDataset(root_dir     = "../data4/alldata/",
+        self.dataset = MRIDataset(root_dir     = "../data/",
                             labels       = self.labels,
                             transform    = transforms.Compose([
                                 ToTensor()])

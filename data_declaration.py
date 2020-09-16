@@ -109,7 +109,7 @@ class MRIDataset(Dataset):
         self.len = 0
         self.labels = labels
         
-        self.clin_data = pd.read_csv("../data4/lon_clinical.csv")
+        self.clin_data = pd.read_csv("../data/clinical.csv")
               
         train_dirs = []
         for label in labels:
