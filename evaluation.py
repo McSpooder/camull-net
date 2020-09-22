@@ -13,7 +13,8 @@ import torch
 import torch.nn    as nn
 import torch.optim as optim
 
-device = None
+#device = None
+device = torch.device("cuda:0")
 
 def evaluate_model(device_in, uuid, ld_helper):
 

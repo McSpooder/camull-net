@@ -98,6 +98,37 @@ def get_clinical(im_id, clin_df):
     return clinical
 
 
+class DataSample():
+
+    def __init__(self, root_dir, transform=None):
+
+        self.transform = transform   
+
+        mri_path = glob.glob(root_dir + "/*.nii")[0]
+        mri_path = pathlib.Path(mri_path)
+
+        clinical_path = glob.glob(root_dir + "/*.csv")[0]
+        clinical_path = pathlib.Path(clinical_path)
+        self.clin_data = pd.read_csv(clinical_path)
+
+        im_id    = get_im_id(mri_path)
+        mri      = get_mri(mri_path)
+        clinical = get_clinical(im_id, self.clin_data)
+
+
+        self.sample = {'mri': mri, 'clinical':clinical, 'label':np.array([0], dtype=np.double)}
+
+        if self.transform:
+            self.sample = self.transform(self.sample)
+
+        
+    def __getitem__(self, key):
+        return self.sample[key]
+        
+
+    
+    
+
 
 class MRIDataset(Dataset):
     
