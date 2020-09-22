@@ -12,3 +12,4 @@ dependencies:
   - Pandas=0.25.3
   - Nibabel=3.0.0
   - Tqdm=4.42.1
+  - fire
