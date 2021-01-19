@@ -11,7 +11,7 @@ import numpy   as np
 import pandas  as pd
 import nibabel as nib
 
-from data_declaration import MRIDataset
+from data_declaration import MRIDataset, Task
 from loader_helper    import loader_helper
 from architecture     import load_cam_model, Camull
 from evaluation       import evaluate_model
