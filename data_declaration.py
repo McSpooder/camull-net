@@ -142,7 +142,7 @@ class MRIDataset(torch.Dataset):
 
         return sample
 
-class ToTensor(object):
+class ToTensor():
     '''Convert ndarrays in sample to Tensors.'''
     def __call__(self, sample):
         image, clinical, label = sample['mri'], sample['clinical'], sample['label']
