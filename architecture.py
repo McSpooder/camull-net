@@ -9,13 +9,13 @@ import numpy as np
 class ConvBlock(nn.Module):
 
     def __init__(self, c_in, c_out, ks, k_stride=1):
-        
+
         super().__init__()
 
-        self.conv1 = nn.Conv3d(c_in, c_out, ks, stride=k_stride, padding=(1,1,1))
+        self.conv1 = nn.Conv3d(c_in, c_out, ks, stride=k_stride, padding=(1, 1, 1))
         self.bn = nn.BatchNorm3d(c_out)
         self.elu = nn.ELU()
-        self.pool = nn.MaxPool3d(kernel_size=(3,3,3), stride=2)
+        self.pool = nn.MaxPool3d(kernel_size=(3, 3, 3), stride=2)
         self.dropout = nn.Dropout3d(p=0.1)
 
         
@@ -167,5 +167,5 @@ class Camull(nn.Module):
     
        
 def load_cam_model(path):
-     model = torch.load(path)
-     return model
+    model = torch.load(path)
+    return model

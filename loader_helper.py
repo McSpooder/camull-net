@@ -1,58 +1,58 @@
-from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms, utils
-from torch.utils.data import Subset
+'''The following module deals with creating the loader he'''
+from torch.utils.data import DataLoader, Subset
+from torchvision import transforms
+import numpy as np
 
-from data_declaration import *
-
-from enum import Enum
-
+from data_declaration import MRIDataset, Task
+from data_declaration import ToTensor
 
 
-class loader_helper:
-    
-    def __init__(self, task : Task = Task.CN_v_AD):
-        
+class LoaderHelper:
+    '''An abstract class for assisting with dataset creation.'''
+    def __init__(self, task: Task = Task.CN_v_AD):
+
         self.task = task
         self.labels = []
 
-        if (task == Task.CN_v_AD):
+        if task == Task.CN_v_AD:
             self.labels = ["CN", "AD"]
         else:
             self.labels = ["sMCI", "pMCI"]
 
         self.dataset = MRIDataset(root_dir="../data/",
-                 labels=self.labels,
+                labels=self.labels,
                 transform=transforms.Compose([
-                    ToTensor()
-                ]))
+                ToTensor()
+            ]))
 
         self.indices = []
         self.set_indices()
 
 
     def get_task(self):
+        '''gets task'''
         return self.task
 
 
     def get_task_string(self):
-
-        if (self.task == Task.CN_v_AD):
+        '''Gets task string'''
+        if self.task == Task.CN_v_AD:
             return "CN_v_AD"
         else:
             return "sMCI_v_pMCI"
 
 
     def change_ds_labels(self, labels_in):
-        
-        self.dataset = MRIDataset(root_dir     = "../data/",
-                                  labels       = labels_in,
-                                  transform    = transforms.Compose([
+        '''Function to change the labels of the dataset obj.'''
+        self.dataset = MRIDataset(root_dir="../data/",
+                                  labels=labels_in,
+                                  transform=transforms.Compose([
                                       ToTensor()])
                                  )
 
-    
-    def change_task(self, task: Task):
 
+    def change_task(self, task: Task):
+        '''Function to change task of the Datasets'''
         self.task = task
         
         if (task == Task.CN_v_AD):
@@ -60,24 +60,24 @@ class loader_helper:
         else:
             self.labels = ["sMCI", "pMCI"]
 
-        self.dataset = MRIDataset(root_dir     = "../data/",
-                            labels       = self.labels,
-                            transform    = transforms.Compose([
+        self.dataset = MRIDataset(root_dir="../data/",
+                            labels=self.labels,
+                            transform=transforms.Compose([
                                 ToTensor()])
                             )
 
         self.set_indices()
 
-        
-    def set_indices(self, total_folds=5):
 
-        test_split      = .2
+    def set_indices(self, total_folds=5):
+        '''Abstract function to set indices'''
+        test_split = .2
         shuffle_dataset = True
-        random_seed     = 42
+        random_seed = 42
 
         dataset_size = len(self.dataset)
-        indices      = list(range(dataset_size))
-        split        = int(np.floor(test_split * dataset_size))
+        indices = list(range(dataset_size))
+        split = int(np.floor(test_split * dataset_size))
 
         if shuffle_dataset:
             np.random.seed(random_seed)
@@ -87,19 +87,19 @@ class loader_helper:
         lb_split = 0
         ub_split = split
 
-        for k in range(total_folds):
-            train_indices = indices[:lb_split] + indices[ub_split:] 
-            test_indices  = indices[lb_split:ub_split]
-            lb_split      = split
-            ub_split      = 2*split
+        for _ in range(total_folds):
+            train_indices = indices[:lb_split] + indices[ub_split:]
+            test_indices = indices[lb_split:ub_split]
+            lb_split = split
+            ub_split = 2*split #only works if kfold is 5 so be carefull
             fold_indices.append((train_indices, test_indices))
 
         self.indices = fold_indices
 
 
     def make_loaders(self, shuffle=True):
-
-        fold_indices = self.get_indices()
+        '''Makes the loaders'''
+        fold_indices = self.indices()
 
         for k in range(5):
 
@@ -107,11 +107,11 @@ class loader_helper:
             test_ds  = Subset(self.dataset, fold_indices[k][1])
 
             train_dl = DataLoader(train_ds, batch_size=4, shuffle=shuffle, num_workers=4, drop_last=True)
-            test_dl  = DataLoader(test_ds,  batch_size=4, shuffle=shuffle, num_workers=4, drop_last=True)
+            test_dl = DataLoader(test_ds,  batch_size=4, shuffle=shuffle, num_workers=4, drop_last=True)
 
         print(len(test_ds))
 
-        return (train_dl_lst, test_dl_lst)
+        return (train_dl, test_dl)
 
     
     def get_train_dl(self, fold_ind, shuffle=True):
