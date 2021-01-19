@@ -22,7 +22,6 @@ def get_im_id(path):
 
     fname = path.stem
     im_id_str = ""
-    count = 0
     #the I that comes before the id needs to be removed hence [1:]
     im_id_str = fname.split("_")[-1][1:] 
     return int(im_id_str)

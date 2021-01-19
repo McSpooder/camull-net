@@ -11,9 +11,9 @@ import numpy   as np
 import pandas  as pd
 import nibabel as nib
 
-from data_declaration import *
+from data_declaration import MRIDataset
 from loader_helper    import loader_helper
-from architecture     import *
+from architecture     import load_cam_model, Camull
 from evaluation       import evaluate_model
 
 
@@ -54,16 +54,8 @@ def save_weights(model_in, uuid, fold=1, task : Task = None):
             
             
 def load_model(arch, path=None):
-    
-    if (arch == "vox"):
         
-        if (path == None):         
-            model = get_model("./weights/vox_arch_weights-2020-03-18_13:46:41")
-        else:            
-            model = get_model(path)
-        
-        
-    else: #must be camull       
+    if (arch == "camull"): #must be camull       
         
         if (path == None):
             model = load_cam_model("../weights/camnet/fold_0_weights-2020-04-09_18_29_02")
