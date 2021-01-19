@@ -22,7 +22,7 @@ def get_im_id(path):
     fname = path.stem
     im_id_str = ""
     #the I that comes before the id needs to be removed hence [1:]
-    im_id_str = fname.split("_")[-1][1:] 
+    im_id_str = fname.split("_")[-1][1:]
     return int(im_id_str)
 
 def get_ptid(path):
@@ -43,7 +43,7 @@ def get_ptid(path):
 
 def get_acq_year(im_data_id, im_df):
     '''Gets the acquisition year from a pandas dataframe by searching the image id'''
-    acq_date = im_df[im_df['Image Data ID'] == im_data_id]["Acq Date"].iloc[0] 
+    acq_date = im_df[im_df['Image Data ID'] == im_data_id]["Acq Date"].iloc[0]
     acq_year_str = ""
 
     slash_count = 0
@@ -64,13 +64,13 @@ def get_label(path, labels):
     if label_str == labels[0]:
         label = np.array([0], dtype=np.double)
     elif label_str == labels[1]:
-        label = np.array([1], dtype=np.double)     
+        label = np.array([1], dtype=np.double)
     return label
 
 def get_mri(path):
     '''Gets a numpy array representing the mri object from a file path'''
     mri = nib.load(str(path)).get_fdata()
-    mri.resize(1,110,110,110)
+    mri.resize(1, 110, 110, 110)
     mri = np.asarray(mri)
 
     return mri
@@ -79,7 +79,7 @@ def get_clinical(im_id, clin_df):
     '''Gets clinical features vector by searching dataframe for image id'''
     clinical = np.zeros(21)
 
-    row     = clin_df.loc[clin_df["Image Data ID"] == im_id]
+    row = clin_df.loc[clin_df["Image Data ID"] == im_id]
 
     for k in range(1, 22):
         clinical[k-1] = row.iloc[0][k]
@@ -90,8 +90,8 @@ class MRIDataset(torch.Dataset):
     '''Provides an object for the MRI data that can be iterated.'''
     def __init__(self, root_dir, labels, transform=None):
 
-        self.root_dir = root_dir        
-        self.transform = transform     
+        self.root_dir = root_dir
+        self.transform = transform
         self.directories = []
         self.len = 0
         self.labels = labels
@@ -109,7 +109,7 @@ class MRIDataset(torch.Dataset):
 
     def __len__(self):
 
-        return self.len 
+        return self.len
 
     def __getitem__(self, idx):
 
@@ -120,18 +120,18 @@ class MRIDataset(torch.Dataset):
 
         while repeat:
             try:
-                path     = self.directories[idx]
-                im_id    = get_im_id(path)
-                mri      = get_mri(path)
+                path = self.directories[idx]
+                im_id = get_im_id(path)
+                mri = get_mri(path)
                 clinical = get_clinical(im_id, self.clin_data)
-                label    = get_label(path, self.labels)
+                label = get_label(path, self.labels)
 
                 sample = {'mri': mri, 'clinical':clinical, 'label':label}
 
                 if self.transform:
                     sample = self.transform(sample)
 
-                return sample 
+                return sample
 
             except IndexError as index_e:
                 print(index_e)
