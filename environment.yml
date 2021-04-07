@@ -1,4 +1,4 @@
-name: cam-env
+name: hsp
 channels:
   - anaconda
   - pytorch

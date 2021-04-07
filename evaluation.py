@@ -1,4 +1,3 @@
-from loader_helper    import loader_helper
 from architecture     import load_cam_model
 from data_declaration import Task
 
@@ -18,7 +17,6 @@ device = None
 def evaluate_model(device_in, uuid, ld_helper):
 
     device     = device_in
-    filein     = open("log.txt", 'a')
 
     log_path = "../logs/" + uuid + ".txt"
 
