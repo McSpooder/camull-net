@@ -11,8 +11,7 @@ import torch.optim as optim
 from data_declaration import Task
 from loader_helper    import LoaderHelper
 from architecture     import load_cam_model, Camull
-from evaluation       import evaluate_model
-
+from evaluation import evaluate_model
 
 if torch.cuda.is_available():
     DEVICE = torch.device("cuda:0")
@@ -119,7 +118,7 @@ def train_camull(ld_helper, k_folds=5, model=None, epochs=40):
 def main():
     '''Main function of the module.'''
     #CN v AD
-    #ld_helper = LoaderHelper(task=Task.CN_v_AD)
+    ld_helper = LoaderHelper(task=Task.CN_v_AD)
     #model_uuid = train_camull(ld_helper, epochs=40)
     evaluate_model(DEVICE, "beb0a1f6d4584009a6aee649fd32f970", ld_helper)
 

@@ -12,11 +12,14 @@ import torch
 import torch.nn    as nn
 import torch.optim as optim
 
+from tqdm.auto import tqdm
+
 device = None
 
 def evaluate_model(device_in, uuid, ld_helper):
 
-    device     = device_in
+    global device
+    device = device_in
 
     log_path = "../logs/" + uuid + ".txt"
 
@@ -27,8 +30,6 @@ def evaluate_model(device_in, uuid, ld_helper):
         
     task_str   = ld_helper.get_task_string()
 
-    fold = 0
-
     filein.write("\n")
     filein.write("==========================\n")
     filein.write("===== Log for camull =====\n")
@@ -38,6 +39,7 @@ def evaluate_model(device_in, uuid, ld_helper):
     filein.write("\n")
 
     tot_acc = 0; tot_sens = 0; tot_spec = 0; tot_roc_auc = 0
+    fold = 0
 
     srch_path = "../weights/{}/".format(task_str) + uuid + "/*"
     for path in glob.glob(srch_path):
@@ -45,12 +47,15 @@ def evaluate_model(device_in, uuid, ld_helper):
         print("Evaluating fold: ", fold + 1)
 
         model   = load_cam_model(path)
+        model.to(device)
         test_dl = ld_helper.get_test_dl(fold)
 
         if (not os.path.exists("../graphs/" + uuid)) : os.mkdir("../graphs/" + uuid)
         metrics = get_roc_auc(model, test_dl, figure=True, path = "../graphs/" + uuid, fold=fold+1)
         accuracy, sensitivity, specificity, roc_auc, you_max, you_thresh = [*metrics]
 
+        print("Evaluated fold: {}".format(fold+1))
+        
         filein.write("=====   Fold {}  =====".format(fold+1))
         filein.write("\n")
         filein.write("Threshold {}".format(you_thresh))
@@ -95,7 +100,7 @@ def get_roc_auc(model_in, test_dl, figure=False, path=None, fold=1):
     youdens_s_max = 0
     optimal_thresh = 0
 
-    for t in range(0, 10, 1):
+    for t in tqdm(range(0, 10, 1)):
 
         thresh = t/10
         acc, sens, spec = get_metrics(model_in, test_dl, thresh)
