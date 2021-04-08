@@ -120,7 +120,7 @@ def main():
     #CN v AD
     ld_helper = LoaderHelper(task=Task.CN_v_AD)
     #model_uuid = train_camull(ld_helper, epochs=40)
-    evaluate_model(DEVICE, "beb0a1f6d4584009a6aee649fd32f970", ld_helper)
+    evaluate_model(DEVICE, "c51bf83c4455416e8bc8b1ebbc8b75ca", ld_helper)
 
     #transfer learning for pMCI v sMCI
     # ld_helper.change_task(Task.sMCI_v_pMCI)
