@@ -13,8 +13,15 @@ import torch.nn    as nn
 import torch.optim as optim
 
 from tqdm.auto import tqdm
+import enlighten
+
+manager = enlighten.get_manager()
+ticks = manager.counter(total=5, desc='Fold', unit='folds')
+tocks = manager.counter(total=10, desc='Threshold', unit='notches')
+data_pbar = manager.counter(total=0, desc='Data', unit='batches')
 
 device = None
+
 
 def evaluate_model(device_in, uuid, ld_helper):
 
@@ -43,12 +50,13 @@ def evaluate_model(device_in, uuid, ld_helper):
 
     srch_path = "../weights/{}/".format(task_str) + uuid + "/*"
     for path in glob.glob(srch_path):
-        
+
         print("Evaluating fold: ", fold + 1)
 
         model   = load_cam_model(path)
         model.to(device)
         test_dl = ld_helper.get_test_dl(fold)
+        data_pbar.total = len(test_dl)
 
         if (not os.path.exists("../graphs/" + uuid)) : os.mkdir("../graphs/" + uuid)
         metrics = get_roc_auc(model, test_dl, figure=True, path = "../graphs/" + uuid, fold=fold+1)
@@ -71,6 +79,9 @@ def evaluate_model(device_in, uuid, ld_helper):
 
         tot_acc += accuracy; tot_sens += sensitivity; tot_spec += specificity; tot_roc_auc += roc_auc
         fold += 1
+        ticks.update()
+        tocks.count = 0
+
 
     avg_acc     =  (tot_acc     / 5)
     avg_sens    =  (tot_sens    / 5)
@@ -100,7 +111,8 @@ def get_roc_auc(model_in, test_dl, figure=False, path=None, fold=1):
     youdens_s_max = 0
     optimal_thresh = 0
 
-    for t in tqdm(range(0, 10, 1)):
+    print("Walking through thresholds.")
+    for t in range(0, 10, 1):
 
         thresh = t/10
         acc, sens, spec = get_metrics(model_in, test_dl, thresh)
@@ -116,9 +128,14 @@ def get_roc_auc(model_in, test_dl, figure=False, path=None, fold=1):
             optimal_thresh = thresh
             opt_acc = acc; opt_sens = sens; opt_spec = spec
 
+        tocks.update()
+        
 
-    roc_auc = auc(fpr, tpr)
-
+    roc_auc = -1
+    try:
+        roc_auc = auc(fpr, tpr)
+    except Exception as e:
+        print(e)
     metrics = [opt_acc, opt_sens, opt_spec, roc_auc, youdens_s_max, optimal_thresh]
 
     if(figure):
@@ -141,7 +158,7 @@ def get_roc_auc(model_in, test_dl, figure=False, path=None, fold=1):
         plt.title('ROC Curve - Fold {}'.format(fold))
         plt.legend(loc="lower right")
         plt.savefig(path)
-
+    
     return metrics
 
 
@@ -180,9 +197,13 @@ def get_metrics(model_in, test_dl, thresh=0.5, param_count=False):
                     
                     
                 total += 1
+
+            data_pbar.update()
     
     accuracy = round(correct/total, 3)
     sensitivity = round((TP / (TP + FN)), 3)
     specificity = round((TN / (TN + FP)), 3)
+
+    data_pbar.count = 0
     
     return (accuracy, sensitivity, specificity)
