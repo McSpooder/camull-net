@@ -15,11 +15,6 @@ import torch.optim as optim
 from tqdm.auto import tqdm
 import enlighten
 
-manager = enlighten.get_manager()
-ticks = manager.counter(total=5, desc='Fold', unit='folds')
-tocks = manager.counter(total=10, desc='Threshold', unit='notches')
-data_pbar = manager.counter(total=0, desc='Data', unit='batches')
-
 device = None
 
 
@@ -27,6 +22,12 @@ def evaluate_model(device_in, uuid, ld_helper):
 
     global device
     device = device_in
+
+    manager = enlighten.get_manager()
+    ticks = manager.counter(total=5, desc='Fold', unit='folds')
+    tocks = manager.counter(total=10, desc='Threshold', unit='notches')
+    data_pbar = manager.counter(total=0, desc='Data', unit='batches')
+
 
     log_path = "../logs/" + uuid + ".txt"
 

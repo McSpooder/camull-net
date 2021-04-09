@@ -15,10 +15,8 @@ from evaluation import evaluate_model
 
 if torch.cuda.is_available():
     DEVICE = torch.device("cuda:0")
-    print("Running on the GPU")
 else:
     DEVICE = torch.device("cpu")
-    print("Running on the CPU")
 
 def save_weights(model_in, uuid_arg, fold=1, task: Task = None):
     '''The following function saves the weights file into required folder'''
@@ -115,12 +113,27 @@ def train_camull(ld_helper, k_folds=5, model=None, epochs=40):
 
     return uuid_
 
+def start(ld_helper, epochs=40, model_uuid=None):
+
+    task = ld_helper.get_task()
+    if (task == Task.CN_v_AD):
+        model_uuid = train_camull(ld_helper, epochs=40)
+    else: # sMCI vs pMCI
+        if (model_uuid != None):
+            model = load_model("camull", model_uuid)
+            model_uuid  = train_camull(ld_helper, model=model, epochs=40)
+        else:
+            print("Need a model uuid")
+    
+    return model_uuid
+
+
 def main():
     '''Main function of the module.'''
     #CN v AD
-    ld_helper = LoaderHelper(task=Task.CN_v_AD)
+    #ld_helper = LoaderHelper(task=Task.CN_v_AD)
     #model_uuid = train_camull(ld_helper, epochs=40)
-    evaluate_model(DEVICE, "c51bf83c4455416e8bc8b1ebbc8b75ca", ld_helper)
+    #evaluate_model(DEVICE, "c51bf83c4455416e8bc8b1ebbc8b75ca", ld_helper)
 
     #transfer learning for pMCI v sMCI
     # ld_helper.change_task(Task.sMCI_v_pMCI)
@@ -128,4 +141,4 @@ def main():
     # uuid  = train_camull(ld_helper, model=model, epochs=40)
     # evaluate_model(device, uuid, ld_helper)
 
-main()
+#main()
