@@ -16,11 +16,17 @@ from tqdm.auto import tqdm
 import enlighten
 
 device = None
-
+ticks = None
+tocks = None
+data_pbar = None
 
 def evaluate_model(device_in, uuid, ld_helper):
 
     global device
+    global ticks
+    global tocks
+    global data_pbar
+
     device = device_in
 
     manager = enlighten.get_manager()
@@ -181,6 +187,8 @@ def get_metrics(model_in, test_dl, thresh=0.5, param_count=False):
             for i in range(4): #hard coded batch size of 4
                 
                 real_class = batch_y[i].item()
+                X = batch_X[i].view(-1, 1, 110, 110, 110)
+                Xb = batch_Xb[i].view(1, 21)
                 net_out = model_in((batch_X[i].view(-1, 1, 110, 110, 110), batch_Xb[i].view(1, 21)))
                 predicted_class = 1 if net_out > thresh else 0
                 

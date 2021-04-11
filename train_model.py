@@ -15,8 +15,10 @@ from evaluation import evaluate_model
 
 if torch.cuda.is_available():
     DEVICE = torch.device("cuda:0")
+    print("Running on the GPU.")
 else:
     DEVICE = torch.device("cpu")
+    print("Running on the CPU")
 
 def save_weights(model_in, uuid_arg, fold=1, task: Task = None):
     '''The following function saves the weights file into required folder'''
@@ -141,4 +143,4 @@ def main():
     # uuid  = train_camull(ld_helper, model=model, epochs=40)
     # evaluate_model(device, uuid, ld_helper)
 
-#main()
+main()

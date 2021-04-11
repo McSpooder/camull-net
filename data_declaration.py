@@ -87,6 +87,7 @@ def get_clinical(im_id, clin_df):
 
     return clinical
 
+
 class MRIDataset(Dataset):
     '''Provides an object for the MRI data that can be iterated.'''
     def __init__(self, root_dir, labels, transform=None):
