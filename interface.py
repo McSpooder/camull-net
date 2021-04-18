@@ -17,27 +17,27 @@ else:
 
 def train_new_model_cli():
 
-    print("0. CN vs AD")
+    print("0. NC vs AD")
     print("1. sMCI vs pMCI")
     print("\n")
     choice = input("Which task would you like to perform?: ")
     print("\n")
 
-    task = Task.CN_v_AD
+    task = Task.NC_v_AD
     ld_helper = LoaderHelper(task)
 
     if (int(choice) == 0):
         uuid = start(ld_helper, 40)
-        print("A new CN vs AD model has been trained under the tag: {}".format(uuid))
+        print("A new NC vs AD model has been trained under the tag: {}".format(uuid))
         print("Would you like to evaluate it?")
         print("0. Yes")
         print("1. No")
         if (int(choice) == 0):
             evaluate_model(device, uuid, ld_helper)
     else:
-        print("To train for sMCI vs pMCI you need transfer learning from a CN vs AD model. Would you like to transfer learning from an existing model or train a new CN vs AD model?\n")
+        print("To train for sMCI vs pMCI you need transfer learning from a NC vs AD model. Would you like to transfer learning from an existing model or train a new NC vs AD model?\n")
         print("0. Existing model.")
-        print("1. Train a new CN vs AD model.\n")
+        print("1. Train a new NC vs AD model.\n")
         choice = input("Please select an option: ")
         if (int(choice) == 0):
             #Display the 5 most recent models.
@@ -54,7 +54,7 @@ def train_new_model_cli():
             if (int(choice) != 5):
                 ld_helper.change_task(Task.sMCI_v_pMCI)
                 uuid = start(ld_helper, 40, model_uuids[int(choice)])
-                print("A new CN vs AD model has been trained under the tag: {}".format(uuid))
+                print("A new NC vs AD model has been trained under the tag: {}".format(uuid))
                 print("Would you like to evaluate it?")
                 print("0. Yes")
                 print("1. No")
@@ -63,9 +63,9 @@ def train_new_model_cli():
                 else:
                     print("Please enter a uuid.")
         else:
-            print("Training a new CN vs AD model.")
+            print("Training a new NC vs AD model.")
             uuid = start(ld_helper, 40)
-            print("A new CN vs AD model has been generated under the tag: {}.".format(uuid))
+            print("A new NC vs AD model has been generated under the tag: {}.".format(uuid))
             print("Initiating transfer learning for the sMCI vs pMCI task.")
             ld_helper.change_task(Task.sMCI_v_pMCI)
             uuid = start(ld_helper, 40, uuid)
@@ -106,15 +106,15 @@ def get_subject_info():
 
 
 def make_an_inference():
-    print("0. CN vs AD")
+    print("0. NC vs AD")
     print("1. sMCI vs pMCI")
     print("\n")
     choice = int(input("Which task would you like to perform?: "))
 
     if (choice == 0):
-        #fetch the most recent models for CN vs AD.
+        #fetch the most recent models for NC vs AD.
         model_uuids = ["as3asf34f352f43t42w90asf3e", "86ft3nfa9nf302yns273nds82n", "872b17sd271dn27717rsnsaf31", "86ft3nfa9nf302yns273nds82n", "86ft3nfa9nf302yns273nds82n"]
-        print("Here are the 5 most recent models trained for CN vs AD...(dummies)")
+        print("Here are the 5 most recent models trained for NC vs AD...(dummies)")
         print("0. {} 01/02/20T12:02:31:03 avg. auc={}".format(model_uuids[0], 0))
         print("1. {} 01/02/20T12:03:31:03 avg. auc={}".format(model_uuids[1], 0))
         print("2. {} 01/02/20T12:06:20:01 avg. auc={}".format(model_uuids[2], 0))
@@ -123,7 +123,7 @@ def make_an_inference():
         print("5. Other.")
         print("\n")
         choice = input("Please select an option: ")
-        path = "/home/dan/Programming/weights/CN_v_AD/c51bf83c4455416e8bc8b1ebbc8b75ca/fold_2_weights-2020-04-29_13_04_53"
+        path = "/home/dan/Programming/weights/NC_v_AD/c51bf83c4455416e8bc8b1ebbc8b75ca/fold_2_weights-2020-04-29_13_04_53"
         if (int(choice) != 5):
             mri, clinical = get_subject_info()
             mri_t = torch.from_numpy(mri) / 255.0

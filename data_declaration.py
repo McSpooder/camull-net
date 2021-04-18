@@ -15,7 +15,7 @@ class Task(Enum):
     '''
         Enum class for the two classification tasks
     '''
-    CN_v_AD = 1
+    NC_v_AD = 1
     sMCI_v_pMCI = 2
 
 def get_im_id(path):
