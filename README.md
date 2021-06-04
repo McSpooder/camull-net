@@ -38,7 +38,7 @@ $ conda env create -f environment.yml
 
 ## Data
 
-You must place the data folder in a directory above the project folder. The data folder must contain a csv file with the clinical data and a folder containing the MRI images for each class. The data can be obtained from the ADNI website.
+You must place the data folder in a directory above the project folder. The data folder must contain a csv file with the clinical data and a folder containing the MRI images for each class. The data can be obtained from the ADNI website. The data requirements are described in more detail in the wiki but to sumarize the clinical vector must be of length 21 and the mri scans have to be of dimension 110x110x110.
 
 ## How to use
 1. Place your data in the directory above. (See ![wiki](https://github.com/McSpooder/camull_net/wiki/Data-Requirements)) 
