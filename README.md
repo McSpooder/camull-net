@@ -38,10 +38,10 @@ $ conda env create -f environment.yml
 
 ## Data
 
-You must place the data folder in a directory above the project folder. The data folder must contain a csv file with the clinical data and a folder containing the MRI images for each class. The data can be obtained from the ADNI website. The data requirements are described in more detail in the wiki but to sumarize the clinical vector must be of length 21 and the mri scans have to be of dimension 110x110x110. Alternatively you can download a zip from this ![link](https://drive.google.com/file/d/1QhupPIg9UWU7MkoU9JQnqj5tbf4_fdTF/view?usp=sharing) of my preprocessed dataset. 
+You must place the data folder in a directory above the project folder. The data folder must contain a csv file with the clinical data and a folder containing the MRI images for each class. The data can be obtained from the ADNI website. The data requirements are described in more detail in the wiki but to sumarize the clinical vector must be of length 21 and the mri scans have to be of dimension 110x110x110. Alternatively you can download a zip from this [link](https://drive.google.com/file/d/1QhupPIg9UWU7MkoU9JQnqj5tbf4_fdTF/view?usp=sharing) of my preprocessed dataset. 
 
 ## How to use
-1. Place your data in the directory above. (See ![wiki](https://github.com/McSpooder/camull_net/wiki/Data-Requirements)) 
+1. Place your data in the directory above. (See [wiki](https://github.com/McSpooder/camull_net/wiki/Data-Requirements)) 
 2. Run "python train_model.py"
 3. Wait about 20 mins; grab some snacks.
 4. Look in the save folder for logs and graphs (..\graphs\, ..\logs\).
@@ -55,6 +55,6 @@ https://medium.com/@hextra_19712/deep-learning-for-alzheimers-classification-576
 !(image)[https://i.gyazo.com/1b655be7b33cff82372088abdbf8eb4c.png]
 
 ## Extras
-![alt](https://miro.medium.com/max/1000/1*guvHPIlisovNCCltm5W8-w.png "blocks")
-![alt](https://miro.medium.com/max/700/1*hbOeKu1qpQXQYA1RNWzkJA.png "architecture")
+[alt](https://miro.medium.com/max/1000/1*guvHPIlisovNCCltm5W8-w.png "blocks")
+[alt](https://miro.medium.com/max/700/1*hbOeKu1qpQXQYA1RNWzkJA.png "architecture")
 
