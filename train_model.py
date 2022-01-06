@@ -12,7 +12,7 @@ import torch.optim as optim
 from data_declaration import Task
 from loader_helper    import LoaderHelper
 from architecture     import load_cam_model, Camull
-#from evaluation import evaluate_model
+from evaluation import evaluate_model
 
 if torch.cuda.is_available():
     DEVICE = torch.device("cuda:0")
@@ -137,7 +137,7 @@ def main():
     #NC v AD
     ld_helper = LoaderHelper(task=Task.NC_v_AD)
     model_uuid = train_camull(ld_helper, epochs=40)
-    #evaluate_model(DEVICE, model_uuid, ld_helper)
+    evaluate_model(DEVICE, model_uuid, ld_helper)
 
     #transfer learning for pMCI v sMCI
     # ld_helper.change_task(Task.sMCI_v_pMCI)
