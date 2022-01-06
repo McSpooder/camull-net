@@ -1,8 +1,8 @@
 from architecture     import load_cam_model
 from data_declaration import Task
 
-import matplotlib.pyplot as plt
-from sklearn.metrics import roc_curve, auc
+#import matplotlib.pyplot as plt
+#from sklearn.metrics import roc_curve, auc
 
 import os
 import glob
@@ -13,7 +13,7 @@ import torch.nn    as nn
 import torch.optim as optim
 
 from tqdm.auto import tqdm
-import enlighten
+
 
 device = None
 ticks = None

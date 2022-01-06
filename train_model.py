@@ -1,4 +1,5 @@
 '''The following module trains the weights of the neural network model.'''
+from genericpath import exists
 import os
 import datetime
 import uuid
@@ -11,7 +12,7 @@ import torch.optim as optim
 from data_declaration import Task
 from loader_helper    import LoaderHelper
 from architecture     import load_cam_model, Camull
-from evaluation import evaluate_model
+#from evaluation import evaluate_model
 
 if torch.cuda.is_available():
     DEVICE = torch.device("cuda:0")
@@ -30,7 +31,7 @@ def save_weights(model_in, uuid_arg, fold=1, task: Task = None):
         root_path = "../weights/sMCI_v_pMCI/" + uuid_arg + "/"
 
     if fold == 1:
-        os.mkdir(root_path) #otherwise it already exists
+        os.mkdirs(root_path, exist_ok=True) #otherwise it already exists
 
     while True:
 
@@ -39,6 +40,7 @@ def save_weights(model_in, uuid_arg, fold=1, task: Task = None):
         if os.path.exists(s_path):
             print("Path exists. Choosing another path.")
         else:
+            #check if the directory exists
             torch.save(model_in, s_path)
             break
 
@@ -133,9 +135,9 @@ def start(ld_helper, epochs=40, model_uuid=None):
 def main():
     '''Main function of the module.'''
     #NC v AD
-    #ld_helper = LoaderHelper(task=Task.NC_v_AD)
-    #model_uuid = train_camull(ld_helper, epochs=40)
-    #evaluate_model(DEVICE, "c51bf83c4455416e8bc8b1ebbc8b75ca", ld_helper)
+    ld_helper = LoaderHelper(task=Task.NC_v_AD)
+    model_uuid = train_camull(ld_helper, epochs=40)
+    #evaluate_model(DEVICE, model_uuid, ld_helper)
 
     #transfer learning for pMCI v sMCI
     # ld_helper.change_task(Task.sMCI_v_pMCI)
@@ -143,4 +145,5 @@ def main():
     # uuid  = train_camull(ld_helper, model=model, epochs=40)
     # evaluate_model(device, uuid, ld_helper)
 
-main()
+if __name__ == '__main__':
+    main()
