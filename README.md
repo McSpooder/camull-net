@@ -42,12 +42,14 @@ You must place the data folder in a directory above the project folder. The data
 
 ## How to use
 1. Place your data in the directory above. (See [wiki](https://github.com/McSpooder/camull_net/wiki/Data-Requirements)) 
-2. Run "python train_model.py"
-3. Wait about 20 mins; grab some snacks.
-4. Look in the save folder for logs and graphs (..\graphs\, ..\logs\).
+2. Run "python camull_cli.py"
+3. First train a model on the task NC vs AD.
+4. Evaluate the model if you wish.
+5. Then load the model and use it to learn the task sMCI v pMCI.
+7. Look in the save folder for logs and graphs (..\graphs\, ..\logs\).
 
 ### Inference
-Once the model has been trained and you are happy with its perfomance after reviewing the graphs and logs you can use it for predictions. This is also known as inference and can be initiated by running the interface.py script. This script will give you an option to load a model of your choice and perform inference on the specified data.
+Once the model has been trained and you are happy with its perfomance after reviewing the graphs and logs you can use it for predictions. The camull_cli script allows you to use load the trained model for predictions.
 
 To read an explanation on this checkout this medium article. 
 https://medium.com/@hextra_19712/deep-learning-for-alzheimers-classification-57611161e442?sk=ebc8035cead352f51f7d0e105a69a6c7
