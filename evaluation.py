@@ -21,6 +21,12 @@ ticks = None
 tocks = None
 data_pbar = None
 
+def make_folders():
+    if (not os.path.exists("../logs/")):
+        os.mkdir("../logs/")
+    if (not os.path.exists("../graphs/")):
+        os.mkdir("../graphs/")
+
 def evaluate_model(device_in, uuid, ld_helper):
 
     global device
@@ -35,13 +41,14 @@ def evaluate_model(device_in, uuid, ld_helper):
     tocks = manager.counter(total=10, desc='Threshold', unit='notches')
     data_pbar = manager.counter(total=0, desc='Data', unit='batches')
 
-
+    make_folders()
     log_path = "../logs/" + uuid + ".txt"
 
     if (os.path.exists(log_path)):
         filein     = open(log_path, 'a')
     else:
         filein     = open(log_path, 'w')
+
         
     task_str   = ld_helper.get_task_string()
 
@@ -149,10 +156,10 @@ def get_roc_auc(model_in, test_dl, figure=False, path=None, fold=1):
     if(figure):
 
         if (path == None):
-            path = "../graphs/auc-{date:%Y-%m-%d_%H:%M:%S}.png".format(date=datetime.datetime.now())
+            path = "../graphs/auc-{date:%Y-%m-%d_%H-%M-%S}.png".format(date=datetime.datetime.now())
         else:
             #append dir
-            path = path + "/auc-fold{}-{date:%Y-%m-%d_%H:%M:%S}.png".format(fold, date=datetime.datetime.now())
+            path = path + "/auc-fold{}-{date:%Y-%m-%d_%H-%M-%S}.png".format(fold, date=datetime.datetime.now())
         
         plt.figure()
         lw = 2
