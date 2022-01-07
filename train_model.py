@@ -23,20 +23,18 @@ else:
 
 def save_weights(model_in, uuid_arg, fold=1, task: Task = None):
     '''The following function saves the weights file into required folder'''
-    root_path = ""
 
-    if task == Task.NC_v_AD:
-        root_path = "../weights/NC_v_AD/"     + uuid_arg + "/"
-    else:
-        root_path = "../weights/sMCI_v_pMCI/" + uuid_arg + "/"
+    root_path = "../weights/" + task.__str__() + "/"     + uuid_arg + "/"
 
     if fold == 1:
-        os.makedirs(root_path, exist_ok=True) #otherwise it already exists
+        win_root_path = "..\\weights\\" + task.__str__() + "\\"     + uuid_arg + "\\"
+        os.makedirs(win_root_path, exist_ok=True) #otherwise it already exists
+
 
     while True:
 
-        s_path = root_path + "fold_{}_weights-{date:%Y-%m-%d_%H:%M:%S}".format(fold, date=datetime.datetime.now()) # pylint: disable=line-too-long
-
+        s_path = root_path + "fold_{}_weights-{date:%Y-%m-%d_%H-%M-%S}.pt".format(fold, date=datetime.datetime.now()) # pylint: disable=line-too-long
+        
         if os.path.exists(s_path):
             print("Path exists. Choosing another path.")
         else:
@@ -136,7 +134,7 @@ def main():
     '''Main function of the module.'''
     #NC v AD
     ld_helper = LoaderHelper(task=Task.NC_v_AD)
-    model_uuid = train_camull(ld_helper, epochs=40)
+    model_uuid = train_camull(ld_helper, epochs=0) #usually 40
     evaluate_model(DEVICE, model_uuid, ld_helper)
 
     #transfer learning for pMCI v sMCI

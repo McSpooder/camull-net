@@ -18,6 +18,12 @@ class Task(Enum):
     NC_v_AD = 1
     sMCI_v_pMCI = 2
 
+    def __str__(self) -> str:
+        if super().__str__() == "Task.NC_v_AD":
+            return "NC_v_AD"
+        else:
+            return "sMCI_v_pMCI"
+
 def get_im_id(path):
     '''Gets the image id from the file path string'''
     fname = path.stem
