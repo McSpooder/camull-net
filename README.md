@@ -54,7 +54,7 @@ Once the model has been trained and you are happy with its perfomance after revi
 To read an explanation on this checkout this medium article. 
 https://medium.com/@hextra_19712/deep-learning-for-alzheimers-classification-57611161e442?sk=ebc8035cead352f51f7d0e105a69a6c7
 
-!(image)[https://i.gyazo.com/1b655be7b33cff82372088abdbf8eb4c.png]
+!()[https://i.gyazo.com/1b655be7b33cff82372088abdbf8eb4c.png]
 
 ## Extras
 [alt](https://miro.medium.com/max/1000/1*guvHPIlisovNCCltm5W8-w.png "blocks")
