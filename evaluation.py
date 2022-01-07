@@ -56,6 +56,7 @@ def evaluate_model(device_in, uuid, ld_helper):
     filein.write("==========================\n")
     filein.write("===== Log for camull =====\n")
     filein.write("==========================\n")
+    filein.write("\n")
     filein.write("----- Date: {date:%Y-%m-%d_%H:%M:%S} -----\n".format(date=datetime.datetime.now()))
     filein.write("\n")
     filein.write("\n")
