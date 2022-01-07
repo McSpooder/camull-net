@@ -8,14 +8,14 @@ from data_standardisation import convert_to_np
 
 import torch
 
-if torch.cuda.is_available():
-    device = torch.device("cuda:0")
-    print("Running on the GPU")
-else:
-    device = torch.device("cpu")
-    print("Running on the CPU")
-
 def train_new_model_cli():
+
+    if torch.cuda.is_available():
+        device = torch.device("cuda:0")
+        print("Running on the GPU")
+    else:
+        device = torch.device("cpu")
+        print("Running on the CPU")
 
     print("0. NC vs AD")
     print("1. sMCI vs pMCI")
@@ -27,13 +27,32 @@ def train_new_model_cli():
     ld_helper = LoaderHelper(task)
 
     if (int(choice) == 0):
-        uuid = start(ld_helper, 40)
+        print("\n")
+        epochs = input("How many epochs would you like to do? (default: 40): ")
+        print("\n")
+
+        uuid = ""
+        if epochs == "":
+            uuid = start(device, ld_helper, 40)
+        else:
+            num_epochs = 0
+            try:
+                num_epochs = int(epochs)
+            except:
+                print("Number of epochs must be a valid number.")
+            uuid = start(device, ld_helper, int(epochs))
+
+        print("\n")
         print("A new NC vs AD model has been trained under the tag: {}".format(uuid))
+        print("\n")
         print("Would you like to evaluate it?")
         print("0. Yes")
         print("1. No")
+        print("\n")
+        choice = input("Enter your choice [0,1]: ")
         if (int(choice) == 0):
             evaluate_model(device, uuid, ld_helper)
+
     else:
         print("To train for sMCI vs pMCI you need transfer learning from a NC vs AD model. Would you like to transfer learning from an existing model or train a new NC vs AD model?\n")
         print("0. Existing model.")
@@ -171,4 +190,5 @@ def advanced_run():
 def __main__():
     basic_run()
 
-__main__()
+if __name__ == '__main__':
+    __main__()

@@ -38,8 +38,8 @@ def evaluate_model(device_in, uuid, ld_helper):
 
     manager = enlighten.get_manager()
     ticks = manager.counter(total=5, desc='Fold', unit='folds')
-    tocks = manager.counter(total=10, desc='Threshold', unit='notches')
-    data_pbar = manager.counter(total=0, desc='Data', unit='batches')
+    tocks = manager.counter(total=10, desc='Threshold-------------', unit='notches')
+    data_pbar = manager.counter(total=0, desc='Data------------------', unit='batches')
 
     make_folders()
     log_path = "../logs/" + uuid + ".txt"
