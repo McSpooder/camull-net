@@ -5,17 +5,17 @@ The code was developed as part of my dissertation at the university of Hull. You
 
 ## Features
 
+* Program
+  * Performs k-fold cross validation
+  * Loads and saves neural network models
+  * Logs the train and test loss
+  * Outputs Area under the ROC curve jpegs for each k-fold
+  * Saves each model under a unique identifier in a neat directory structure
 * Neural Net
   * 3D seperable convolution to reduce number of parameters and hence overfitting.
   * Multiple concurrent data streams
     * MRI Data
     * Clinical Data
-* Program
-  * Saves and loads model
-  * Supports k-fold cross validation
-  * Logs the train and test loss
-  * Outputs Area under the ROC curve for each k-fold
-  * Saves each model under a unique identifier
   
 ## Requirements
 

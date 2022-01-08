@@ -1,20 +1,14 @@
 from architecture     import load_cam_model
-from data_declaration import Task
+import torch
 
+from sklearn.metrics import auc
 import matplotlib.pyplot as plt
-from sklearn.metrics import roc_curve, auc
+
+import enlighten
 
 import os
 import glob
 import datetime
-
-import torch
-import torch.nn    as nn
-import torch.optim as optim
-
-from tqdm.auto import tqdm
-
-import enlighten
 
 device = None
 ticks = None

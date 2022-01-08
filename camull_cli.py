@@ -168,6 +168,7 @@ def make_an_inference():
 def basic_run():
     '''The basic run doesn't give the user option to tweak the hyper-parameters.'''
 
+    print("\n")
     print("Welcome to Camull.\n")
     print("0. Train a new model.")
     print("1. Test an existing model.")
