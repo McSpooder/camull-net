@@ -1,9 +1,9 @@
-from train_model import start
-from evaluation import evaluate_model
-from data_declaration import Task
-from loader_helper    import LoaderHelper
-from architecture import load_cam_model
-from data_declaration import get_mri
+from train_model          import start
+from evaluation           import evaluate_model
+from data_declaration     import Task
+from loader_helper        import LoaderHelper
+from architecture         import load_cam_model
+from data_declaration     import get_mri
 from data_standardisation import convert_to_np
 
 import torch
