@@ -15,7 +15,7 @@ import os
 def advanced_run():
     '''The advanced run allows the user to tweak the hyper-parameters.'''
 
-def basic_run():
+def basic_run(device):
     '''The basic run doesn't give the user option to tweak the hyper-parameters.'''
 
     print("\n")
@@ -30,13 +30,13 @@ def basic_run():
     print("\n")
 
     if (int(choice) == 0):
-        train_new_model_cli()    
+        train_new_model_cli(device)    
     elif (int(choice) == 1):
-        transfer_learning()
+        transfer_learning(device)
     elif (int(choice) == 2):
-        make_an_inference()
+        make_an_inference(device)
 
-def make_an_inference():
+def make_an_inference(device):
     print("0. NC vs AD")
     print("1. sMCI vs pMCI")
     print("\n")
@@ -77,7 +77,7 @@ def make_an_inference():
         #fetch the most recent models for sMCI vs pMCI
         pass
 
-def transfer_learning():
+def transfer_learning(device):
     print("To train for sMCI vs pMCI you need transfer learning from a NC vs AD model. Would you like to transfer learning from an existing model or train a new NC vs AD model?\n")
     print("0. Existing model.")
     print("1. Train a new NC vs AD model.\n")
@@ -86,7 +86,7 @@ def transfer_learning():
         
         print("Here are 10 of your most recent NC v AD models.")
         print("model uuid | Time | model task | accuracy | sensitivity | specificity")
-        uuids = fetch_models_from_db()
+        model_uuids = fetch_models_from_db()
 
         choice = input("Please enter the model number [1, 10] or the uuid that you would like to choose:")
         
@@ -118,14 +118,7 @@ def transfer_learning():
         # if (int(choice) == 0):
         #     evaluate_model(device, uuid, ld_helper)
 
-def train_new_model_cli():
-
-    if torch.cuda.is_available():
-        device = torch.device("cuda:0")
-        print("Running on the GPU")
-    else:
-        device = torch.device("cpu")
-        print("Running on the CPU")
+def train_new_model_cli(device):
 
     print("0. NC vs AD")
     print("1. sMCI vs pMCI")
@@ -202,7 +195,16 @@ def get_subject_info():
 
 
 def __main__():
-    basic_run()
+
+    device = None
+    if torch.cuda.is_available():
+        device = torch.device("cuda:0")
+        print("Running on the GPU")
+    else:
+        device = torch.device("cpu")
+        print("Running on the CPU")
+
+    basic_run(device)
 
 if __name__ == '__main__':
     __main__()
