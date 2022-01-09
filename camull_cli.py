@@ -11,6 +11,7 @@ import torch
 import sqlite3
 import os
 
+
 def advanced_run():
     '''The advanced run allows the user to tweak the hyper-parameters.'''
 
@@ -31,7 +32,7 @@ def basic_run():
     if (int(choice) == 0):
         train_new_model_cli()    
     elif (int(choice) == 1):
-        train_an_existing_model()
+        transfer_learning()
     elif (int(choice) == 2):
         make_an_inference()
 
@@ -76,7 +77,7 @@ def make_an_inference():
         #fetch the most recent models for sMCI vs pMCI
         pass
 
-def train_an_existing_model():
+def transfer_learning():
     print("To train for sMCI vs pMCI you need transfer learning from a NC vs AD model. Would you like to transfer learning from an existing model or train a new NC vs AD model?\n")
     print("0. Existing model.")
     print("1. Train a new NC vs AD model.\n")
@@ -85,22 +86,13 @@ def train_an_existing_model():
         
         print("Here are 10 of your most recent NC v AD models.")
         print("model uuid | Time | model task | accuracy | sensitivity | specificity")
-        fetch_models_from_db()
+        uuids = fetch_models_from_db()
 
         choice = input("Please enter the model number [1, 10] or the uuid that you would like to choose:")
         
-        model_uuids = ["as3asf34f352f43t42w90asf3e", "86ft3nfa9nf302yns273nds82n", "872b17sd271dn27717rsnsaf31", "86ft3nfa9nf302yns273nds82n", "86ft3nfa9nf302yns273nds82n"]
-        print("Here are the 5 most recent models...(dummies)")
-        print("0. {} 01/02/20T12:02:31:03 avg. auc={}".format(model_uuids[0], 0))
-        print("1. {} 01/02/20T12:03:31:03 avg. auc={}".format(model_uuids[1], 0))
-        print("2. {} 01/02/20T12:06:20:01 avg. auc={}".format(model_uuids[2], 0))
-        print("3. {} 01/02/20T12:03:31:03 avg. auc={}".format(model_uuids[3], 0))
-        print("4. {} 01/02/20T12:03:31:03 avg. auc={}".format(model_uuids[4], 0))
-        print("5. Other.")
-        print("\n")
-        choice = input("Please select an option: ")
+        
         if (int(choice) != 5):
-            ld_helper.change_task(Task.sMCI_v_pMCI)
+            ld_helper = LoaderHelper(Task.sMCI_v_pMCI)
             uuid = start(ld_helper, 40, model_uuids[int(choice)])
             print("A new NC vs AD model has been trained under the tag: {}".format(uuid))
             print("Would you like to evaluate it?")
@@ -177,8 +169,12 @@ def train_new_model_cli():
 def fetch_models_from_db():
     conn = sqlite3.connect("..\\weights\\neural-network.db")
     cur = conn.cursor()
-    for row in cur.execute('SELECT * FROM nn_perfomance'):
+    model_uuids = []
+    i = 0
+    for i, row in enumerate(cur.execute('SELECT * FROM nn_perfomance')):
         print(row)
+        model_uuids[i] = row(i)
+    return model_uuids
 
 def get_subject_info():
 

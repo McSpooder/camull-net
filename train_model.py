@@ -1,9 +1,7 @@
 '''The following module trains the weights of the neural network model.'''
 
 from data_declaration import Task
-from loader_helper    import LoaderHelper
 from architecture     import load_cam_model, Camull
-from evaluation import evaluate_model
 
 import torch
 import torch.nn    as nn
@@ -147,18 +145,3 @@ def start(device, ld_helper, epochs, model_uuid=None):
     return model_uuid
 
 
-def main():
-    '''Main function of the module.'''
-    #NC v AD
-    # ld_helper = LoaderHelper(task=Task.NC_v_AD)
-    # model_uuid = train_camull(ld_helper, epochs=5) #usually 40
-    # evaluate_model(DEVICE, model_uuid, ld_helper)
-
-    #transfer learning for pMCI v sMCI
-    # ld_helper.change_task(Task.sMCI_v_pMCI)
-    # model = load_model("camull", uuid)
-    # uuid  = train_camull(ld_helper, model=model, epochs=40)
-    # evaluate_model(device, uuid, ld_helper)
-
-if __name__ == '__main__':
-    main()
