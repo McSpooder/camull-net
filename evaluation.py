@@ -44,8 +44,9 @@ def evaluate_model(device_in, uuid, ld_helper):
 
     write_to_file(filein)
     
-    task_str   = ld_helper.get_task_string()
+    cursor = get_db_cursor()
 
+    task_str   = ld_helper.get_task_string()
 
     tot_acc = 0; tot_sens = 0; tot_spec = 0; tot_roc_auc = 0
     fold = 0
@@ -53,7 +54,6 @@ def evaluate_model(device_in, uuid, ld_helper):
     srch_path = "../weights/{}/".format(task_str) + uuid + "/*"
     for path in glob.glob(srch_path):
 
-        print("Evaluating fold: ", fold + 1)
 
         model   = load_cam_model(path)
         model.to(device)
@@ -64,7 +64,6 @@ def evaluate_model(device_in, uuid, ld_helper):
         metrics = get_roc_auc(model, test_dl, figure=True, path = "../graphs/" + uuid, fold=fold+1)
         accuracy, sensitivity, specificity, roc_auc, you_thresh, you_max = [*metrics]
 
-        print("Evaluated fold: {}".format(fold+1))
         
         write_to_file(filein, metrics=[fold+1, accuracy, sensitivity, specificity, roc_auc, you_max, you_thresh])
 
