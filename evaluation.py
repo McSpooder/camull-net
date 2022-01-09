@@ -1,7 +1,10 @@
+from sqlite3.dbapi2 import Cursor
+
+from sklearn import metrics
 from   architecture     import load_cam_model
 import torch
 
-from   sklearn.metrics import auc
+from   sklearn.metrics   import auc
 import matplotlib.pyplot as plt
 
 import sqlite3
@@ -31,6 +34,7 @@ def evaluate_model(device_in, uuid, ld_helper):
     data_pbar = manager.counter(total=0, desc='Data------------------', unit='batches')
 
     make_folders()
+
     log_path = "../logs/" + uuid + ".txt"
 
     if (os.path.exists(log_path)):
@@ -38,17 +42,10 @@ def evaluate_model(device_in, uuid, ld_helper):
     else:
         filein     = open(log_path, 'w')
 
-        
+    write_to_file(filein)
+    
     task_str   = ld_helper.get_task_string()
 
-    filein.write("\n")
-    filein.write("==========================\n")
-    filein.write("===== Log for camull =====\n")
-    filein.write("==========================\n")
-    filein.write("\n")
-    filein.write("----- Date: {date:%Y-%m-%d_%H:%M:%S} -----\n".format(date=datetime.datetime.now()))
-    filein.write("\n")
-    filein.write("\n")
 
     tot_acc = 0; tot_sens = 0; tot_spec = 0; tot_roc_auc = 0
     fold = 0
@@ -65,22 +62,11 @@ def evaluate_model(device_in, uuid, ld_helper):
 
         if (not os.path.exists("../graphs/" + uuid)) : os.mkdir("../graphs/" + uuid)
         metrics = get_roc_auc(model, test_dl, figure=True, path = "../graphs/" + uuid, fold=fold+1)
-        accuracy, sensitivity, specificity, roc_auc, you_max, you_thresh = [*metrics]
+        accuracy, sensitivity, specificity, roc_auc, you_thresh, you_max = [*metrics]
 
         print("Evaluated fold: {}".format(fold+1))
         
-        filein.write("=====   Fold {}  =====".format(fold+1))
-        filein.write("\n")
-        filein.write("Threshold {}".format(you_thresh))
-        filein.write("\n")
-        filein.write("--- Accuracy     : {}\n".format(accuracy))
-        filein.write("--- Sensitivity  : {}\n".format(sensitivity))
-        filein.write("--- Specificity  : {}\n".format(specificity))
-        filein.write("--- Youdens stat : {}\n".format(you_max))
-        filein.write("\n")
-        filein.write("(Variable Threshold)")
-        filein.write("--- ROC AUC     : {}\n".format(roc_auc))
-        filein.write("\n")
+        write_to_file(filein, metrics=[fold+1, accuracy, sensitivity, specificity, roc_auc, you_max, you_thresh])
 
         tot_acc += accuracy; tot_sens += sensitivity; tot_spec += specificity; tot_roc_auc += roc_auc
         fold += 1
@@ -93,16 +79,8 @@ def evaluate_model(device_in, uuid, ld_helper):
     avg_spec    =  (tot_spec    / 5)
     avg_roc_auc =  (tot_roc_auc / 5)
 
-    filein.write("\n")
-    filein.write("===== Average Across 5 folds =====")
-    filein.write("\n")
-    filein.write("--- Accuracy    : {}\n".format(avg_acc))
-    filein.write("--- Sensitivity : {}\n".format(avg_sens))
-    filein.write("--- Specificity : {}\n".format(avg_spec))
-    filein.write("\n")
-    filein.write("(Variable Threshold)")
-    filein.write("--- ROC AUC     : {}\n".format(avg_roc_auc))
-    filein.write("\n")
+    write_to_file_footer(filein, [avg_acc, avg_sens, avg_spec, avg_roc_auc])
+
 
 
 def get_roc_auc(model_in, test_dl, figure=False, path=None, fold=1):
@@ -216,8 +194,59 @@ def get_metrics(model_in, test_dl, thresh=0.5, param_count=False):
     return (accuracy, sensitivity, specificity)
 
 
+def get_db_cursor():
+    conn = sqlite3.connect("..\\weights\\neural-network.db")
+    cursor = conn.cursor()
+    return cursor
+
+
 def make_folders():
     if (not os.path.exists("../logs/")):
         os.mkdir("../logs/")
     if (not os.path.exists("../graphs/")):
         os.mkdir("../graphs/")
+
+
+def write_to_file(filein, metrics=None):
+
+    if (metrics == None):
+
+        filein.write("\n")
+        filein.write("==========================\n")
+        filein.write("===== Log for camull =====\n")
+        filein.write("==========================\n")
+        filein.write("\n")
+        filein.write("----- Date: {date:%Y-%m-%d_%H:%M:%S} -----\n".format(date=datetime.datetime.now()))
+        filein.write("\n")
+        filein.write("\n")
+    else:
+
+        fold, accuracy, sensitivity, specificity, roc_auc, you_thresh, you_max = [*metrics]
+        filein.write("=====   Fold {}  =====".format(fold+1)) #22 chars
+        filein.write("\n")
+        filein.write("-----Threshold {}-----".format(you_thresh))
+        filein.write("\n")
+        filein.write("--- Accuracy     : {}\n".format(accuracy))
+        filein.write("--- Sensitivity  : {}\n".format(sensitivity))
+        filein.write("--- Specificity  : {}\n".format(specificity))
+        filein.write("--- Youdens stat : {}\n".format(you_max))
+        filein.write("\n")
+        filein.write("(Variable Threshold)")
+        filein.write("--- ROC AUC     : {}\n".format(roc_auc))
+        filein.write("\n")
+
+
+def write_to_file_footer(filein, avg_lst):
+
+    avg_acc, avg_sens, avg_spec, avg_roc_auc = [*avg_lst]
+    filein.write("\n")
+    filein.write("===== Average Across 5 folds =====")
+    filein.write("\n")
+    filein.write("--- Accuracy    : {}\n".format(avg_acc))
+    filein.write("--- Sensitivity : {}\n".format(avg_sens))
+    filein.write("--- Specificity : {}\n".format(avg_spec))
+    filein.write("\n")
+    filein.write("(Variable Threshold)")
+    filein.write("--- ROC AUC     : {}\n".format(avg_roc_auc))
+    filein.write("\n")
+

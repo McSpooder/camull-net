@@ -156,7 +156,7 @@ def train_new_model_cli(device):
         if (int(choice) == 0):
             evaluate_model(device, uuid, ld_helper)
         else:
-            basic_run()
+            basic_run(device)
 
 
 def fetch_models_from_db():
