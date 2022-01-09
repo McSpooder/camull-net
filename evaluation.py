@@ -1,25 +1,20 @@
-from architecture     import load_cam_model
+from   architecture     import load_cam_model
 import torch
 
-from sklearn.metrics import auc
+from   sklearn.metrics import auc
 import matplotlib.pyplot as plt
 
+import sqlite3
 import enlighten
 
 import os
 import glob
 import datetime
 
-device = None
-ticks = None
-tocks = None
+device    = None
+ticks     = None
+tocks     = None
 data_pbar = None
-
-def make_folders():
-    if (not os.path.exists("../logs/")):
-        os.mkdir("../logs/")
-    if (not os.path.exists("../graphs/")):
-        os.mkdir("../graphs/")
 
 def evaluate_model(device_in, uuid, ld_helper):
 
@@ -219,3 +214,10 @@ def get_metrics(model_in, test_dl, thresh=0.5, param_count=False):
     data_pbar.count = 0
     
     return (accuracy, sensitivity, specificity)
+
+
+def make_folders():
+    if (not os.path.exists("../logs/")):
+        os.mkdir("../logs/")
+    if (not os.path.exists("../graphs/")):
+        os.mkdir("../graphs/")
