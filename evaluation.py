@@ -1,4 +1,4 @@
-from sqlite3.dbapi2 import Cursor
+from sqlite3.dbapi2 import Cursor, connect
 
 from sklearn import metrics
 from   architecture     import load_cam_model
@@ -13,11 +13,13 @@ import enlighten
 import os
 import glob
 import datetime
+import time
 
 device    = None
 ticks     = None
 tocks     = None
 data_pbar = None
+conn      = None
 
 def evaluate_model(device_in, uuid, ld_helper):
 
@@ -29,7 +31,7 @@ def evaluate_model(device_in, uuid, ld_helper):
     device = device_in
 
     manager = enlighten.get_manager()
-    ticks = manager.counter(total=5, desc='Fold', unit='folds')
+    ticks = manager.counter(total=5, desc='Fold------------------', unit='folds') #22 chars
     tocks = manager.counter(total=10, desc='Threshold-------------', unit='notches')
     data_pbar = manager.counter(total=0, desc='Data------------------', unit='batches')
 
@@ -63,7 +65,6 @@ def evaluate_model(device_in, uuid, ld_helper):
         if (not os.path.exists("../graphs/" + uuid)) : os.mkdir("../graphs/" + uuid)
         metrics = get_roc_auc(model, test_dl, figure=True, path = "../graphs/" + uuid, fold=fold+1)
         accuracy, sensitivity, specificity, roc_auc, you_thresh, you_max = [*metrics]
-
         
         write_to_file(filein, metrics=[fold+1, accuracy, sensitivity, specificity, roc_auc, you_max, you_thresh])
 
@@ -72,13 +73,65 @@ def evaluate_model(device_in, uuid, ld_helper):
         ticks.update()
         tocks.count = 0
 
-
     avg_acc     =  (tot_acc     / 5)
     avg_sens    =  (tot_sens    / 5)
     avg_spec    =  (tot_spec    / 5)
     avg_roc_auc =  (tot_roc_auc / 5)
 
+    params = (uuid, str(time.time()), task_str, avg_acc, avg_sens,
+            avg_spec, avg_roc_auc)
+
+    cursor.execute("INSERT INTO nn_perfomance VALUES (?, ?, ?, ?, ?, ?, ?)", params)
+    conn.commit()
+
     write_to_file_footer(filein, [avg_acc, avg_sens, avg_spec, avg_roc_auc])
+
+
+def evaluate_fold(device_in, uuid, ld_helper, fold_in):
+    global device
+    global ticks
+    global tocks
+    global data_pbar
+
+    manager = enlighten.get_manager()
+    ticks = manager.counter(total=1, desc='Fold------------------', unit='folds')
+    tocks = manager.counter(total=10, desc='Threshold-------------', unit='notches')
+    data_pbar = manager.counter(total=0, desc='Data------------------', unit='batches')
+    fold = fold_in - 1 #This is done because python indexes by zero.
+    device = device_in
+
+    make_folders()
+    
+    cursor = get_db_cursor()
+
+    task_str   = ld_helper.get_task_string()
+
+    tot_acc = 0; tot_sens = 0; tot_spec = 0; tot_roc_auc = 0
+
+    srch_path = "../weights/{}/".format(task_str) + uuid + "/*"
+    folds_paths = glob.glob(srch_path)
+
+    model   = load_cam_model(folds_paths[fold])
+    model.to(device)
+    test_dl = ld_helper.get_test_dl(fold)
+    data_pbar.total = len(test_dl)
+
+    if (not os.path.exists("../graphs/" + uuid)) : os.mkdir("../graphs/" + uuid)
+    metrics = get_roc_auc(model, test_dl, figure=True, path = "../graphs/" + uuid, fold=fold+1)
+    accuracy, sensitivity, specificity, roc_auc, you_thresh, you_max = [*metrics]
+    
+
+    tot_acc += accuracy; tot_sens += sensitivity; tot_spec += specificity; tot_roc_auc += roc_auc
+    fold += 1
+    ticks.update()
+    tocks.count = 0
+
+    params = (uuid, str(time.time()), task_str, str(accuracy), str(sensitivity),
+            str(specificity), str(roc_auc))
+
+    cursor.execute("INSERT INTO nn_perfomance VALUES (?, ?, ?, ?, ?, ?, ?)", params)
+    conn.commit()
+    #cursor.execute("INSERT INTO nn_perfomance (uuid, time, task, accuracy, sensitivity, specificity, roc_auc) VALUES (" + uuid + "," + str(time.time()) + "," + task_str + "," + str(accuracy) + "," + str(sensitivity) + "," + str(specificity) + "," + str(roc_auc) + ")")
 
 
 
@@ -194,9 +247,27 @@ def get_metrics(model_in, test_dl, thresh=0.5, param_count=False):
 
 
 def get_db_cursor():
+    global conn
     conn = sqlite3.connect("..\\weights\\neural-network.db")
     cursor = conn.cursor()
     return cursor
+
+
+def create_db():
+    conn = sqlite3.connect("../weights/neural-network.db")
+    cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE "nn_perfomance" (
+	"uuid"	TEXT NOT NULL UNIQUE,
+	"time"	REAL,
+	"task"	TEXT DEFAULT 0,
+	"accuracy"	INTEGER,
+	"sensitivity"	INTEGER,
+	"specificity"	INTEGER,
+	"roc_auc"	INTEGER,
+	PRIMARY KEY("uuid")
+)''')
+    conn.commit()
+    conn.close()
 
 
 def make_folders():
@@ -204,6 +275,10 @@ def make_folders():
         os.mkdir("../logs/")
     if (not os.path.exists("../graphs/")):
         os.mkdir("../graphs/")
+    if (not os.path.exists("../weights/neural-network.db")):
+        fp = open('neural-network.db', 'x')
+        fp.close()
+        create_db()
 
 
 def write_to_file(filein, metrics=None):

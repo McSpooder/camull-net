@@ -1,5 +1,5 @@
 from train_model          import start
-from evaluation           import evaluate_model
+from evaluation           import evaluate_fold, evaluate_model
 from data_declaration     import Task
 from loader_helper        import LoaderHelper
 from architecture         import load_cam_model
@@ -57,7 +57,7 @@ def make_an_inference(device):
         path = "/home/dan/Programming/weights/NC_v_AD/c51bf83c4455416e8bc8b1ebbc8b75ca/fold_2_weights-2020-04-29_13_04_53"
         if (int(choice) != 5):
             mri, clinical = get_subject_info()
-            mri_t = torch.from_numpy(mri) / 255.0
+            mri_t = torch.from_numpy(mri) / 255.0 
             mri_t = mri_t.unsqueeze(0)
             mri_t = mri_t.to(device)
             clin_t = torch.from_numpy(clinical)
@@ -85,7 +85,7 @@ def transfer_learning(device):
     if (int(choice) == 0):
         
         print("Here are 10 of your most recent NC v AD models.")
-        print("model uuid | Time | model task | accuracy | sensitivity | specificity")
+        print("model uuid | Time | model task | accuracy | sensitivity | specificity | roc_auc")
         model_uuids = fetch_models_from_db()
 
         choice = input("Please enter the model number [1, 10] or the uuid that you would like to choose:")
@@ -154,7 +154,15 @@ def train_new_model_cli(device):
         print("\n")
         choice = input("Enter your choice [0,1]: ")
         if (int(choice) == 0):
-            evaluate_model(device, uuid, ld_helper)
+            print("\n")
+            print("There are 5 folds to evaluate")
+            print("Input a fold number to evaluate or input 6 to evaluate all folds.")
+            print("\n")
+            choice = int(input("Enter your choice [1,6]: "))
+            if (choice != 6):
+                evaluate_fold(device, uuid, ld_helper, choice)
+            else:
+                evaluate_model(device, uuid, ld_helper)
         else:
             basic_run(device)
 

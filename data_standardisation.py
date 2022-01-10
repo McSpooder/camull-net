@@ -1,7 +1,6 @@
 '''The following script contains functions for normalising and standardising the input data. Although the training data has already been standardised,
 the user inputted data is not.'''
 
-from sklearn import preprocessing
 import numpy as np
 
 min_max = {"AGE":(54.4, 91.4), "PTEDUCAT":(4, 20), "CDRSB":(0,17), "ADAS11":(0,59), "ADAS13":(0,74), "RAVLT_immediate":(1,75), "RAVLT_learning":(-5,14), "RAVLT_forgetting":(-1035,15),
