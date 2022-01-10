@@ -10,7 +10,13 @@ import torch
 
 import sqlite3
 import os
+import glob
 
+global conn
+global cur
+
+conn = sqlite3.connect("..\\weights\\neural-network.db")
+cur = conn.cursor()
 
 def advanced_run():
     '''The advanced run allows the user to tweak the hyper-parameters.'''
@@ -20,23 +26,24 @@ def basic_run(device):
 
     print("\n")
     print("Welcome to Camull.\n")
-    print("0. Train a new model.")
-    print("1. Train an existing model.")
-    print("2. Evaluate an existing model.")
+    print("1. Train a new model.")
+    print("2. Train an existing model or do transfer learning.")
     print("3. Make an inference with an existing model.")
+    print("4. Evaluate a model.")
     print("\n")
 
     choice = input("Please input a choice from the menu above?: ")
     print("\n")
 
-    if (int(choice) == 0):
+    if (int(choice) == 1):
         train_new_model_cli(device)    
-    elif (int(choice) == 1):
-        transfer_learning(device)
     elif (int(choice) == 2):
+        transfer_learning(device)
+    elif (int(choice) == 3):
         make_an_inference(device)
 
 def make_an_inference(device):
+    print("\n")
     print("0. NC vs AD")
     print("1. sMCI vs pMCI")
     print("\n")
@@ -44,18 +51,19 @@ def make_an_inference(device):
 
     if (choice == 0):
         #fetch the most recent models for NC vs AD.
-        model_uuids = ["as3asf34f352f43t42w90asf3e", "86ft3nfa9nf302yns273nds82n", "872b17sd271dn27717rsnsaf31", "86ft3nfa9nf302yns273nds82n", "86ft3nfa9nf302yns273nds82n"]
-        print("Here are the 5 most recent models trained for NC vs AD...(dummies)")
-        print("0. {} 01/02/20T12:02:31:03 avg. auc={}".format(model_uuids[0], 0))
-        print("1. {} 01/02/20T12:03:31:03 avg. auc={}".format(model_uuids[1], 0))
-        print("2. {} 01/02/20T12:06:20:01 avg. auc={}".format(model_uuids[2], 0))
-        print("3. {} 01/02/20T12:03:31:03 avg. auc={}".format(model_uuids[3], 0))
-        print("4. {} 01/02/20T12:03:31:03 avg. auc={}".format(model_uuids[4], 0))
-        print("5. Other.")
         print("\n")
-        choice = input("Please select an option: ")
-        path = "/home/dan/Programming/weights/NC_v_AD/c51bf83c4455416e8bc8b1ebbc8b75ca/fold_2_weights-2020-04-29_13_04_53"
-        if (int(choice) != 5):
+        print("Here are the 5 most recent models trained for NC vs AD.")
+        print("model uuid | Time | model task | accuracy | sensitivity | specificity | roc_auc")
+        result = cur.execute("SELECT * FROM nn_perfomance WHERE task is 'NC_v_AD' ORDER BY time DESC LIMIT 5")
+        model_uuids = []
+        for i, row in enumerate(result):
+            print(i+1, row)
+            model_uuids.append(row[0])
+        print("\n")
+        choice = int(input("Please enter an index to use [1, 5]: "))
+        path_a = "../weights/{}/{}/fold_1_*".format(str(Task(1)), model_uuids[i])
+        path = glob.glob(path_a)[0]
+        if (int(choice) != 6):
             mri, clinical = get_subject_info()
             mri_t = torch.from_numpy(mri) / 255.0 
             mri_t = mri_t.unsqueeze(0)
@@ -168,8 +176,8 @@ def train_new_model_cli(device):
 
 
 def fetch_models_from_db():
-    conn = sqlite3.connect("..\\weights\\neural-network.db")
-    cur = conn.cursor()
+    global conn
+    global cur
     model_uuids = []
     i = 0
     for i, row in enumerate(cur.execute('SELECT * FROM nn_perfomance')):
@@ -213,6 +221,7 @@ def __main__():
         print("Running on the CPU")
 
     basic_run(device)
+
 
 if __name__ == '__main__':
     __main__()
