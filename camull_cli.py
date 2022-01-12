@@ -102,11 +102,11 @@ def transfer_learning(device):
         if (int(choice) != 5):
             ld_helper = LoaderHelper(Task.sMCI_v_pMCI)
             uuid = start(ld_helper, 40, model_uuids[int(choice)])
+            print("\n")
             print("A new NC vs AD model has been trained under the tag: {}".format(uuid))
-            print("Would you like to evaluate it?")
-            print("0. Yes")
-            print("1. No")
-            if (int(choice) == 0):
+            choice = input("Would you like to evaluate it (Y/n)?")
+            print("\n")
+            if (int(choice) == 'y' or 'Y' or ''):
                 evaluate_model(device, uuid, ld_helper)
             else:
                 print("Please enter a uuid.")
