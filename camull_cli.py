@@ -103,7 +103,7 @@ def transfer_learning(device):
             ld_helper = LoaderHelper(Task.sMCI_v_pMCI)
             uuid = start(ld_helper, 40, model_uuids[int(choice)])
             print("\n")
-            print("A new NC vs AD model has been trained under the tag: {}".format(uuid))
+            print("A new sMCI vs pMCI model has been trained under the tag: {}".format(uuid))
             choice = input("Would you like to evaluate it (Y/n)?")
             print("\n")
             if (int(choice) == 'y' or 'Y' or ''):
@@ -111,33 +111,29 @@ def transfer_learning(device):
             else:
                 print("Please enter a uuid.")
     else:
+        print("Training a new NC vs AD model.")
+        print("\n")
         uuid = train_new_model_cli()
-        # print("Training a new NC vs AD model.")
-        # uuid = start(ld_helper, 40)
-        # print("A new NC vs AD model has been generated under the tag: {}.".format(uuid))
-        # print("Initiating transfer learning for the sMCI vs pMCI task.")
-        # ld_helper.change_task(Task.sMCI_v_pMCI)
-        # uuid = start(ld_helper, 40, uuid)
-        # print("A new sMCI vs pMCI model under the tag {} has been trained.\n".format(uuid))
-        # print("Would you like to evaluate the model?")
-        # print("0. Yes")
-        # print("1. No")
-        # choice = input("Please select an option: ")
-        # if (int(choice) == 0):
-        #     evaluate_model(device, uuid, ld_helper)
+        ld_helper = LoaderHelper(Task.sMCI_v_pMCI)
+        choice = input("How many epochs would you like to train the task sMCI vs pMCI?(default:40): ")
+        if choice != "":
+            valid = False
+            while(valid==False):
+                try:
+                    uuid = start(ld_helper, int(choice), uuid)
+                    valid = True
+                except:
+                    print("Please input a valid number.")
+        else:
+            print("Training a new model.")
+            uuid = start(ld_helper, 40, uuid)
 
 def train_new_model_cli(device):
-
-    print("0. NC vs AD")
-    print("1. sMCI vs pMCI")
-    print("\n")
-    choice = input("Which task would you like to perform?: ")
-    print("\n")
 
     task = Task.NC_v_AD
     ld_helper = LoaderHelper(task)
 
-    if (int(choice) == 0):
+    if (True):
         print("\n")
         epochs = input("How many epochs would you like to do? (default: 40): ")
         print("\n")
@@ -173,6 +169,11 @@ def train_new_model_cli(device):
                 evaluate_model(device, uuid, ld_helper)
         else:
             basic_run(device)
+    else:
+        print("To train for sMCI vs pMCI you need transfer learning from a NC vs AD model. Would you like to transfer learning from an existing model or train a new NC vs AD model?\n")
+        print("0. Existing model.")
+        print("1. Train a new NC vs AD model.\n")
+        choice = input("Please select an option: ")
 
 
 def fetch_models_from_db():
@@ -184,6 +185,17 @@ def fetch_models_from_db():
         print(row)
         model_uuids[i] = row(i)
     return model_uuids
+
+
+def get_subject_infor_from_db():
+    global conn
+    global cur
+    subjects = []
+    i = 0
+    for i, row in enumerate(cur.execute('SELECT * FROM patient_clinical')):
+        print(row)
+        subjects[i] = row
+    return subjects
 
 def get_subject_info():
 
