@@ -15,8 +15,9 @@ import glob
 global conn
 global cur
 
-conn = sqlite3.connect("..\\weights\\neural-network.db")
-cur = conn.cursor()
+if (os.path.exists("..\\weights\\neural-network.db")):
+    conn = sqlite3.connect("..\\weights\\neural-network.db")
+    cur = conn.cursor()
 
 def advanced_run():
     '''The advanced run allows the user to tweak the hyper-parameters.'''
