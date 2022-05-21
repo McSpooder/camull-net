@@ -26,7 +26,7 @@ $ conda env create -f environment.yml
   
 | Library      | Version     | Purpose     |
 | :------------- | :----------: | -----------: |
-|  Pytorch | 1.4.0   | Deep learning library for tensor transformations    |
+|  Pytorch | 1.11.0   | Deep learning library for tensor transformations    |
 | Torchvision | 0.2.2 | library required by pytorch |
 | Numpy  | 1.18.1 | Datascience library for creating and manipulating arrays in python  |
 | sklearn | 0.23 | Machine learning library used to output area under the curve and other stats. |
