@@ -120,25 +120,17 @@ def transfer_learning(device):
         print("model uuid | Time | model task | accuracy | sensitivity | specificity | roc_auc")
         model_uuids = fetch_models_from_db()
 
-        choice = input("Please enter the model number [1, 10] or the uuid that you would like to choose:")
-        
-        
-        if (int(choice) != 5):
-            ld_helper = LoaderHelper(Task.sMCI_v_pMCI)
-            uuid = start(ld_helper, 40, model_uuids[int(choice)])
+        if not model_uuids == []:
+            choice = input("Please enter the model number [1, 10] or the uuid that you would like to choose:")
+        else:
             print("\n")
-            print("A new sMCI vs pMCI model has been trained under the tag: {}".format(uuid))
-            choice = input("Would you like to evaluate it (Y/n)?")
-            print("\n")
-            if (int(choice) == 'y' or 'Y' or ''):
-                evaluate_model(device, uuid, ld_helper)
-            else:
-                print("Please enter a uuid.")
+            print("No models available. Please train a new model.")
+            choice = input("Would you like to train a new model[0,1]?: ")
 
-    else:
+    if (int(choice) == 1):
         print("Training a new NC vs AD model.")
         print("\n")
-        uuid = train_new_model_cli()
+        uuid = train_new_model_cli(device)
         ld_helper = LoaderHelper(Task.sMCI_v_pMCI)
         choice = input("How many epochs would you like to train the task sMCI vs pMCI?(default:40): ")
         if choice != "":
