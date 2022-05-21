@@ -15,9 +15,25 @@ import glob
 global conn
 global cur
 
-if (os.path.exists("..\\weights\\neural-network.db")):
-    conn = sqlite3.connect("..\\weights\\neural-network.db")
+if not (os.path.exists("../weights")):
+    os.mkdir("../weights")
+    conn = sqlite3.connect("../weights/neural-network.db")
     cur = conn.cursor()
+    sql_create_projects_table = """ CREATE TABLE nn_perfomance (
+                                        model_uuid integer PRIMARY KEY NOT NULL,
+                                        time datetime,
+                                        model_task text,
+                                        accuracy double
+                                        sensitivity double,
+                                        specificity double,
+                                        roc_auc double
+                                    ); """
+    cur.execute(sql_create_projects_table)
+else:
+    conn = sqlite3.connect("../weights/neural-network.db")
+    cur = conn.cursor()
+
+    
 
 def advanced_run():
     '''The advanced run allows the user to tweak the hyper-parameters.'''
@@ -99,7 +115,7 @@ def transfer_learning(device):
     print("1. Train a new NC vs AD model.\n")
     choice = input("Please select an option: ")
     if (int(choice) == 0):
-        
+
         print("Here are 10 of your most recent NC v AD models.")
         print("model uuid | Time | model task | accuracy | sensitivity | specificity | roc_auc")
         model_uuids = fetch_models_from_db()
@@ -118,6 +134,7 @@ def transfer_learning(device):
                 evaluate_model(device, uuid, ld_helper)
             else:
                 print("Please enter a uuid.")
+
     else:
         print("Training a new NC vs AD model.")
         print("\n")
