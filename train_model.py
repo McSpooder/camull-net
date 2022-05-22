@@ -11,6 +11,7 @@ import enlighten
 from tqdm.auto import tqdm
 
 import os
+import sys
 import datetime
 import uuid
 
@@ -32,11 +33,13 @@ def start(device, ld_helper, epochs, model_uuid=None):
     def save_weights(model_in, uuid_arg, fold=1, task: Task = None):
         '''The following function saves the weights file into required folder'''
 
-        root_path = "../weights/" + task.__str__() + "/"     + uuid_arg + "/"
+        if sys.platform.__str__() == 'linux':
+            root_path = "../weights/" + task.__str__() + "/"     + uuid_arg + "/"
+        else: #windows
+            root_path = "..\\weights\\" + task.__str__() + "\\"     + uuid_arg + "\\"
 
-        if fold == 1:
-            win_root_path = "..\\weights\\" + task.__str__() + "\\"     + uuid_arg + "\\"
-            os.makedirs(win_root_path, exist_ok=True) #otherwise it already exists
+
+        if fold == 1: os.makedirs(root_path, exist_ok=True)
 
 
         while True:
