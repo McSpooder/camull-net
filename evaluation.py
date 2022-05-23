@@ -248,7 +248,7 @@ def get_metrics(model_in, test_dl, thresh=0.5, param_count=False):
 
 def get_db_cursor():
     global conn
-    conn = sqlite3.connect("..\\weights\\neural-network.db")
+    conn = sqlite3.connect("../weights/neural-network.db")
     cursor = conn.cursor()
     return cursor
 

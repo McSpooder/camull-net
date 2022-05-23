@@ -123,10 +123,11 @@ def start(device, ld_helper, epochs, model_uuid=None):
             
             batches_c.count = 0
 
-            print("Epoch: {}/{}, train loss: {}".format(i, epochs, round(loss.item(), 5)))
+            print("Epoch: {}/{}, train loss: {}".format(i+1, epochs, round(loss.item(), 5)))
             epochs_c.update()
 
         epochs_c.count = 0
+        epochs_c.update()
 
 
     manager = enlighten.get_manager()
