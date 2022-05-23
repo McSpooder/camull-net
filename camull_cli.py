@@ -212,7 +212,42 @@ def train_new_model_cli(device):
 
 def evaluate_a_model(device):
     #print out the latest models
-    uuids = fetch_models_from_db()
+    print("Here are 10 of your most recent NC v AD models.")
+    print("    model uuid               | Time      | model task | accuracy | sensitivity | specificity | roc_auc")
+    model_uuids = fetch_models_from_db()
+    target_uuid = ""
+
+    if not model_uuids == []:
+        valid = False
+        while (not valid):
+            choice = input("Please enter the model number [1, 10] or the uuid that you would like to choose:")
+            try:
+                target_uuid = model_uuids[int(choice)-1]
+                valid = True
+            except:
+                for i in range(len(model_uuids)):
+                    if choice == model_uuids:
+                        target_uuid = choice
+                        break
+                print("Please enter a valid input.")
+        
+        task = Task.NC_v_AD
+        ld_helper = LoaderHelper(task)
+        print("There are 5 folds to evaluate")
+        print("Input a fold number to evaluate or input 6 to evaluate all folds.")
+        print("\n")
+        choice = int(input("Enter your choice [1,6]: "))
+        if (choice != 6):
+            evaluate_fold(device, target_uuid, ld_helper, choice, commit_to_db=False)
+        else:
+            evaluate_model(device, target_uuid, ld_helper, commit_to_db=False)
+        
+
+    else:
+        print("\n")
+        print("No models available. Please train a new model.")
+        choice = input("Would you like to train a new model[Y/n]?: ")
+        if choice  == 'y' or 'Y' or '': choice = 2
 
 def fetch_models_from_db():
     global conn
@@ -220,8 +255,8 @@ def fetch_models_from_db():
     model_uuids = []
     i = 0
     for i, row in enumerate(cur.execute('SELECT * FROM nn_perfomance')):
-        print(row)
-        model_uuids[i] = row(i)
+        print(str(i+1) + ". ", row)
+        model_uuids.append(row[i])
     return model_uuids
 
 
