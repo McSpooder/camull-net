@@ -33,6 +33,7 @@ else:
     conn = sqlite3.connect("../weights/neural-network.db")
     cur = conn.cursor()
 
+
     
 
 def advanced_run():
