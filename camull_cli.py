@@ -32,6 +32,22 @@ if not (os.path.exists("../weights")):
 else:
     conn = sqlite3.connect("../weights/neural-network.db")
     cur = conn.cursor()
+    try:
+        result = cur.execute("SELECT * FROM nn_perfomance LIMIT 1")
+    except sqlite3.Error as e:
+        print(e)
+        print("Assuming table doesn't exist.")
+        sql_create_projects_table = """ CREATE TABLE nn_perfomance (
+                                        model_uuid integer PRIMARY KEY NOT NULL,
+                                        time datetime,
+                                        model_task text,
+                                        accuracy double
+                                        sensitivity double,
+                                        specificity double,
+                                        roc_auc double
+                                    ); """
+        cur.execute(sql_create_projects_table)
+        
 
 
     
@@ -79,7 +95,7 @@ def make_an_inference(device):
         print("\n")
         print("Here are the 5 most recent models trained for NC vs AD.")
         print("model uuid | Time | model task | accuracy | sensitivity | specificity | roc_auc")
-        result = cur.execute("SELECT * FROM nn_perfomance WHERE task is 'NC_v_AD' ORDER BY time DESC LIMIT 5")
+        result = cur.execute("SELECT * FROM nn_perfomance WHERE model_task is 'NC_v_AD' ORDER BY time DESC LIMIT 5")
         model_uuids = []
         for i, row in enumerate(result):
             print(i+1, row)

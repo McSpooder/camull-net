@@ -81,24 +81,9 @@ def evaluate_model(device_in, uuid, ld_helper):
     params = (uuid, str(time.time()), task_str, avg_acc, avg_sens,
             avg_spec, avg_roc_auc)
 
-    try:
-        cursor.execute("INSERT INTO nn_perfomance VALUES (?, ?, ?, ?, ?, ?, ?)", params)
-        conn.commit()
-    except sqlite3.Error as e:
-        print("Assuming that table nn_perfomance doesn't exist.")
-        print("Creating table.")
-        sql_create_projects_table = """ CREATE TABLE nn_perfomance (
-                                        model_uuid integer PRIMARY KEY NOT NULL,
-                                        time datetime,
-                                        model_task text,
-                                        accuracy double
-                                        sensitivity double,
-                                        specificity double,
-                                        roc_auc double
-                                    ); """
-        cursor.execute(sql_create_projects_table)
-        cursor.execute("INSERT INTO nn_perfomance VALUES (?, ?, ?, ?, ?, ?, ?)", params)
-        conn.commit()
+
+    cursor.execute("INSERT INTO nn_perfomance VALUES (?, ?, ?, ?, ?, ?, ?)", params)
+    conn.commit()
     
 
     write_to_file_footer(filein, [avg_acc, avg_sens, avg_spec, avg_roc_auc])
