@@ -23,7 +23,7 @@ if not (os.path.exists("../weights")):
                                         model_uuid integer PRIMARY KEY NOT NULL,
                                         time datetime,
                                         model_task text,
-                                        accuracy double
+                                        accuracy double,
                                         sensitivity double,
                                         specificity double,
                                         roc_auc double
@@ -41,7 +41,7 @@ else:
                                         model_uuid integer PRIMARY KEY NOT NULL,
                                         time datetime,
                                         model_task text,
-                                        accuracy double
+                                        accuracy double,
                                         sensitivity double,
                                         specificity double,
                                         roc_auc double
@@ -198,9 +198,9 @@ def train_new_model_cli(device):
             print("\n")
             choice = int(input("Enter your choice [1,6]: "))
             if (choice != 6):
-                evaluate_fold(device, uuid, ld_helper, choice)
+                evaluate_fold(device, uuid, ld_helper, choice, cur)
             else:
-                evaluate_model(device, uuid, ld_helper)
+                evaluate_model(device, uuid, ld_helper, cur)
         else:
             basic_run(device)
     else:

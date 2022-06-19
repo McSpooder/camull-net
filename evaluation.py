@@ -21,7 +21,7 @@ tocks     = None
 data_pbar = None
 conn      = None
 
-def evaluate_model(device_in, uuid, ld_helper):
+def evaluate_model(device_in, uuid, ld_helper, cur):
 
     global device
     global ticks
@@ -250,7 +250,7 @@ def get_metrics(model_in, test_dl, thresh=0.5, param_count=False):
 
 def get_db_cursor():
     global conn
-    conn = sqlite3.connect("..\\weights\\neural-network.db")
+    conn = sqlite3.connect("../weights/neural-network.db")
     cursor = conn.cursor()
     return cursor
 
