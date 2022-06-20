@@ -89,7 +89,7 @@ def evaluate_model(device_in, uuid, ld_helper, cur):
     write_to_file_footer(filein, [avg_acc, avg_sens, avg_spec, avg_roc_auc])
 
 
-def evaluate_fold(device_in, uuid, ld_helper, fold_in):
+def evaluate_fold(device_in, uuid, ld_helper, fold_in, commit_to_db=True):
     global device
     global ticks
     global tocks
@@ -128,12 +128,13 @@ def evaluate_fold(device_in, uuid, ld_helper, fold_in):
     ticks.update()
     tocks.count = 0
 
-    params = (uuid, str(time.time()), task_str, str(accuracy), str(sensitivity),
-            str(specificity), str(roc_auc))
+    if commit_to_db == True:
+        params = (uuid, str(time.time()), task_str, str(accuracy), str(sensitivity),
+                str(specificity), str(roc_auc))
 
-    cursor.execute("INSERT INTO nn_perfomance VALUES (?, ?, ?, ?, ?, ?, ?)", params)
-    conn.commit()
-    #cursor.execute("INSERT INTO nn_perfomance (uuid, time, task, accuracy, sensitivity, specificity, roc_auc) VALUES (" + uuid + "," + str(time.time()) + "," + task_str + "," + str(accuracy) + "," + str(sensitivity) + "," + str(specificity) + "," + str(roc_auc) + ")")
+        cursor.execute("INSERT INTO nn_perfomance VALUES (?, ?, ?, ?, ?, ?, ?)", params)
+        conn.commit()
+        #cursor.execute("INSERT INTO nn_perfomance (uuid, time, task, accuracy, sensitivity, specificity, roc_auc) VALUES (" + uuid + "," + str(time.time()) + "," + task_str + "," + str(accuracy) + "," + str(sensitivity) + "," + str(specificity) + "," + str(roc_auc) + ")")
 
 
 

@@ -20,7 +20,7 @@ if not (os.path.exists("../weights")):
     conn = sqlite3.connect("../weights/neural-network.db")
     cur = conn.cursor()
     sql_create_projects_table = """ CREATE TABLE nn_perfomance (
-                                        model_uuid integer PRIMARY KEY NOT NULL,
+                                        model_uuid text PRIMARY KEY NOT NULL,
                                         time datetime,
                                         model_task text,
                                         accuracy double,
@@ -32,6 +32,7 @@ if not (os.path.exists("../weights")):
 else:
     conn = sqlite3.connect("../weights/neural-network.db")
     cur = conn.cursor()
+<<<<<<< HEAD
     try:
         result = cur.execute("SELECT * FROM nn_perfomance LIMIT 1")
     except sqlite3.Error as e:
@@ -39,6 +40,10 @@ else:
         print("Assuming table doesn't exist.")
         sql_create_projects_table = """ CREATE TABLE nn_perfomance (
                                         model_uuid integer PRIMARY KEY NOT NULL,
+=======
+    sql_create_projects_table = """ CREATE TABLE IF NOT EXISTS nn_perfomance (
+                                        model_uuid text PRIMARY KEY NOT NULL,
+>>>>>>> 78b43c69e1654e3b4edd35c4cb8f6860ef5b19c8
                                         time datetime,
                                         model_task text,
                                         accuracy double,
@@ -46,9 +51,13 @@ else:
                                         specificity double,
                                         roc_auc double
                                     ); """
+<<<<<<< HEAD
         cur.execute(sql_create_projects_table)
         
 
+=======
+    cur.execute(sql_create_projects_table)
+>>>>>>> 78b43c69e1654e3b4edd35c4cb8f6860ef5b19c8
 
     
 
@@ -82,15 +91,17 @@ def basic_run(device):
         transfer_learning(device)
     elif (int(choice) == 3):
         make_an_inference(device)
+    elif (int(choice) == 4):
+        evaluate_a_model(device)
 
 def make_an_inference(device):
     print("\n")
-    print("0. NC vs AD")
-    print("1. sMCI vs pMCI")
+    print("1. NC vs AD")
+    print("2. sMCI vs pMCI")
     print("\n")
     choice = int(input("Which task would you like to perform?: "))
 
-    if (choice == 0):
+    if (choice == 1):
         #fetch the most recent models for NC vs AD.
         print("\n")
         print("Here are the 5 most recent models trained for NC vs AD.")
@@ -128,10 +139,10 @@ def make_an_inference(device):
 
 def transfer_learning(device):
     print("To train for sMCI vs pMCI you need transfer learning from a NC vs AD model. Would you like to transfer learning from an existing model or train a new NC vs AD model?\n")
-    print("0. Existing model.")
-    print("1. Train a new NC vs AD model.\n")
+    print("1. Existing model.")
+    print("2. Train a new NC vs AD model.\n")
     choice = input("Please select an option: ")
-    if (int(choice) == 0):
+    if (int(choice) == 1):
 
         print("Here are 10 of your most recent NC v AD models.")
         print("model uuid | Time | model task | accuracy | sensitivity | specificity | roc_auc")
@@ -142,14 +153,16 @@ def transfer_learning(device):
         else:
             print("\n")
             print("No models available. Please train a new model.")
-            choice = input("Would you like to train a new model[0,1]?: ")
+            choice = input("Would you like to train a new model[Y/n]?: ")
+            if choice  == 'y' or 'Y' or '': choice = 2
 
-    if (int(choice) == 1):
+    if (int(choice) == 2):
         print("Training a new NC vs AD model.")
         print("\n")
         uuid = train_new_model_cli(device)
         ld_helper = LoaderHelper(Task.sMCI_v_pMCI)
         choice = input("How many epochs would you like to train the task sMCI vs pMCI?(default:40): ")
+        print("\n")
         if choice != "":
             valid = False
             while(valid==False):
@@ -190,8 +203,12 @@ def train_new_model_cli(device):
         print("0. Yes")
         print("1. No")
         print("\n")
-        choice = input("Enter your choice [0,1]: ")
-        if (int(choice) == 0):
+        choice = input("Enter your choice [Y/n]: ")
+        if choice == 'Y' or 'y' or '': 
+            choice = 1 
+        else: 
+            choice = 0
+        if (int(choice) == 1):
             print("\n")
             print("There are 5 folds to evaluate")
             print("Input a fold number to evaluate or input 6 to evaluate all folds.")
@@ -209,6 +226,44 @@ def train_new_model_cli(device):
         print("1. Train a new NC vs AD model.\n")
         choice = input("Please select an option: ")
 
+def evaluate_a_model(device):
+    #print out the latest models
+    print("Here are 10 of your most recent NC v AD models.")
+    print("    model uuid               | Time      | model task | accuracy | sensitivity | specificity | roc_auc")
+    model_uuids = fetch_models_from_db()
+    target_uuid = ""
+
+    if not model_uuids == []:
+        valid = False
+        while (not valid):
+            choice = input("Please enter the model number [1, 10] or the uuid that you would like to choose:")
+            try:
+                target_uuid = model_uuids[int(choice)-1]
+                valid = True
+            except:
+                for i in range(len(model_uuids)):
+                    if choice == model_uuids:
+                        target_uuid = choice
+                        break
+                print("Please enter a valid input.")
+        
+        task = Task.NC_v_AD
+        ld_helper = LoaderHelper(task)
+        print("There are 5 folds to evaluate")
+        print("Input a fold number to evaluate or input 6 to evaluate all folds.")
+        print("\n")
+        choice = int(input("Enter your choice [1,6]: "))
+        if (choice != 6):
+            evaluate_fold(device, target_uuid, ld_helper, choice, commit_to_db=False)
+        else:
+            evaluate_model(device, target_uuid, ld_helper, commit_to_db=False)
+        
+
+    else:
+        print("\n")
+        print("No models available. Please train a new model.")
+        choice = input("Would you like to train a new model[Y/n]?: ")
+        if choice  == 'y' or 'Y' or '': choice = 2
 
 def fetch_models_from_db():
     global conn
@@ -216,8 +271,8 @@ def fetch_models_from_db():
     model_uuids = []
     i = 0
     for i, row in enumerate(cur.execute('SELECT * FROM nn_perfomance')):
-        print(row)
-        model_uuids[i] = row(i)
+        print(str(i+1) + ". ", row)
+        model_uuids.append(row[i])
     return model_uuids
 
 
