@@ -149,7 +149,6 @@ def get_roc_auc(model_in, test_dl, figure=False, path=None, fold=1):
     youdens_s_max = 0
     optimal_thresh = 0
 
-    print("Walking through thresholds.")
     for t in range(0, 10, 1):
 
         thresh = t/10

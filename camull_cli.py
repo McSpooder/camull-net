@@ -1,4 +1,4 @@
-from train_model          import start
+from train_model          import DEVICE, start
 from evaluation           import evaluate_fold, evaluate_model
 from data_declaration     import Task
 from loader_helper        import LoaderHelper
@@ -136,6 +136,20 @@ def transfer_learning(device):
 
         if not model_uuids == []:
             choice = input("Please enter the model number [1, 10] or the uuid that you would like to choose:")
+            model_uuid = model_uuids[int(choice)-1]
+            ld_helper = LoaderHelper(Task.sMCI_v_pMCI)
+            choice = input("How many epochs would you like to train the task sMCI vs pMCI?(default:40): ")
+            uuid = start(device, ld_helper, int(choice), model_uuid)
+            print("\n")
+            if choice != "":
+                valid = False
+                while(valid==False):
+                    try:
+
+                        valid = True
+                    except:
+                        print("Please input a valid number.")
+
         else:
             print("\n")
             print("No models available. Please train a new model.")
@@ -215,6 +229,7 @@ def train_new_model_cli(device):
 def evaluate_a_model(device):
     #print out the latest models
     print("Here are 10 of your most recent NC v AD models.")
+    print("\n")
     print("    model uuid               | Time      | model task | accuracy | sensitivity | specificity | roc_auc")
     model_uuids = fetch_models_from_db()
     target_uuid = ""
@@ -258,7 +273,7 @@ def fetch_models_from_db():
     i = 0
     for i, row in enumerate(cur.execute('SELECT * FROM nn_perfomance')):
         print(str(i+1) + ". ", row)
-        model_uuids.append(row[i])
+        model_uuids.append(row[i+1])
     return model_uuids
 
 

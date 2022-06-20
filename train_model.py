@@ -1,5 +1,6 @@
 '''The following module trains the weights of the neural network model.'''
 
+import glob
 from data_declaration import Task
 from architecture     import load_cam_model, Camull
 
@@ -19,14 +20,15 @@ DEVICE = None
 
 def start(device, ld_helper, epochs, model_uuid=None):
         
-    def load_model(arch, path=None):
+    def load_model(arch, model_uuid=None):
         '''Function for loaded camull net from a specified weights path'''
         if arch == "camull": #must be camull
 
-            if path is None:
+            if model_uuid is None:
                 model = load_cam_model("../weights/camnet/fold_0_weights-2020-04-09_18_29_02")
             else:
-                model = load_cam_model(path)
+                paths = glob.glob("../weights/NC_v_AD/{}/*".format(model_uuid))              
+                model = load_cam_model(paths[0])
 
         return model
 
@@ -136,8 +138,8 @@ def start(device, ld_helper, epochs, model_uuid=None):
     batches_c = manager.counter(total=75, desc='Batches', unit='batches')
 
     task = ld_helper.get_task()
+    DEVICE = device
     if (task == Task.NC_v_AD):
-        DEVICE = device
         model_uuid = train_camull(ld_helper=ld_helper, epochs=epochs)
     else: # sMCI vs pMCI
         if (model_uuid != None):
