@@ -144,7 +144,7 @@ def start(device, ld_helper, epochs, model_uuid=None):
     else: # sMCI vs pMCI
         if (model_uuid != None):
             model = load_model("camull", model_uuid)
-            model_uuid  = train_camull(ld_helper, model=model, epochs=40)
+            model_uuid  = train_camull(ld_helper, model=model, epochs=epochs)
         else:
             print("Need a model uuid")
     
