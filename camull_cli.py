@@ -96,10 +96,10 @@ def make_an_inference(device):
         model_uuids = []
         for i, row in enumerate(result):
             print(i+1, row)
-            model_uuids.append(row[0])
+            model_uuids.append(row[1])
         print("\n")
         choice = int(input("Please enter an index to use [1, 5]: "))
-        path_a = "../weights/{}/{}/fold_1_*".format(str(Task(1)), model_uuids[i])
+        path_a = "../weights/{}/{}/*".format(str(Task(1)), model_uuids[choice-1])
         path = glob.glob(path_a)[0]
         if (int(choice) != 6):
             mri, clinical = get_subject_info()
@@ -115,7 +115,7 @@ def make_an_inference(device):
             net_out = -1
             with torch.no_grad():
                 net_out = model((mri_t.view(-1, 1, 110, 110, 110), clin_t.view(1, 21)))
-                print("The probability is: ", net_out)
+                print("The probability that the subject has AD is " + str(net_out[0].item()*100)  + "%")
         else:
             print("Invalid selection.")
 
@@ -289,24 +289,43 @@ def get_subject_infor_from_db():
 
 def get_subject_info():
 
-    path = input("Please provide the path to the MRI scan: ")
+    path = input("Please provide the path to the MRI scan (DEFAULT: ./inference-sample/ad-scan.nii): ")
     mri = get_mri(path)
 
     clinical = {}
 
-    clinical["AGE"] = float(input("What is the age of the subject?: "))
-    clinical["GENDER"] = input("What is the subjects gender?: ")
-    clinical["ETHNICITY"] = input("What is the subjects ethnicity?: ")
-    clinical["RACCAT"] = input("What is the subjects race?: ")
-    clinical["PTEDUCAT"] = float(input("How many years did the patient spent in education?: "))
-    clinical["APOE4"] = float(input("How many apoe4 genes does the subject have?: "))
-    clinical["CDRSB"] = float(input("What is the subjects CDRSB score?: "))
-    clinical["ADAS11"] = float(input("What is the subjects ADAS11 score?: "))
-    clinical["ADAS13"] = float(input("What is the subjects ADAS13 score?: "))
-    clinical["RAVLT_immediate"] = float(input("What is the subjects RAVLT_immediate score?: "))
-    clinical["RAVLT_learning"] = float(input("What is the subjects RAVLT_learning score?: "))
-    clinical["RAVLT_forgetting"] = float(input("What is the subjects RAVLT_forgetting score?: "))
-    clinical["RAVLT_perc_forgetting"] = float(input("What is the subjects RAVLT percentage forgetting score?"))
+    clinical["AGE"] = float(input("What is the age of the subject?[0..100]: "))
+    print("\n")
+    print("a) Female")
+    print("b) Male")
+    print("\n")
+    clinical["GENDER"] = input("What is the subjects gender?(write it out fully):")
+    print("\n")
+    print("a) Not Hisp/Latino")
+    print("b) Hisp/Latino")
+    print("\n")
+    clinical["ETHNICITY"] = input("What is the subjects ethnicity?(Write it out fully): ")
+    print("\n")
+    print("Here are the available racial categories. Please choose one from the above: ")
+    print("a) Am Indian/Alaskan")
+    print("b) Asian")
+    print("c) Black")
+    print("d) Haiwaiian/Other PI")
+    print("e) More than one")
+    print("f) Unknown")
+    print("g) White")
+    print("\n")
+    clinical["RACCAT"] = input("What is the subjects race?(Write it out fully): ")
+    clinical["PTEDUCAT"] = float(input("How many years did the patient spent in education?[4..20]: "))
+    clinical["APOE4"] = float(input("How many apoe4 genes does the subject have?[1..2]: "))
+    clinical["CDRSB"] = float(input("What is the subjects CDRSB score?[0..17]: "))
+    clinical["ADAS11"] = float(input("What is the subjects ADAS11 score?[0..59]: "))
+    clinical["ADAS13"] = float(input("What is the subjects ADAS13 score?[0..74]: "))
+    clinical["RAVLT_immediate"] = float(input("What is the subjects RAVLT_immediate score?[0..75]: "))
+    clinical["RAVLT_learning"] = float(input("What is the subjects RAVLT_learning score?[0..14]: "))
+    clinical["RAVLT_forgetting"] = float(input("What is the subjects RAVLT_forgetting score?[0,15]: "))
+    clinical["RAVLT_perc_forgetting"] = float(input("What is the subjects RAVLT percentage forgetting score?[0..100]:"))
+    print("\n")
     
     clinical = convert_to_np(clinical)
     return (mri, clinical)
