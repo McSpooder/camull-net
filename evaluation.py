@@ -82,7 +82,7 @@ def evaluate_model(device_in, uuid, ld_helper, cur):
             avg_spec, avg_roc_auc)
 
 
-    cursor.execute("INSERT INTO nn_perfomance VALUES (?, ?, ?, ?, ?, ?, ?)", params)
+    cursor.execute("INSERT INTO nn_perfomance VALUES (NULL,?, ?, ?, ?, ?, ?, ?)", params)
     conn.commit()
     
 
@@ -132,7 +132,7 @@ def evaluate_fold(device_in, uuid, ld_helper, fold_in, commit_to_db=True):
         params = (uuid, str(time.time()), task_str, str(accuracy), str(sensitivity),
                 str(specificity), str(roc_auc))
 
-        cursor.execute("INSERT INTO nn_perfomance VALUES (?, ?, ?, ?, ?, ?, ?)", params)
+        cursor.execute("INSERT INTO nn_perfomance VALUES (NULL,?, ?, ?, ?, ?, ?, ?)", params)
         conn.commit()
         #cursor.execute("INSERT INTO nn_perfomance (uuid, time, task, accuracy, sensitivity, specificity, roc_auc) VALUES (" + uuid + "," + str(time.time()) + "," + task_str + "," + str(accuracy) + "," + str(sensitivity) + "," + str(specificity) + "," + str(roc_auc) + ")")
 

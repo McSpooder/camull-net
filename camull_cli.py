@@ -20,7 +20,8 @@ if not (os.path.exists("../weights")):
     conn = sqlite3.connect("../weights/neural-network.db")
     cur = conn.cursor()
     sql_create_projects_table = """ CREATE TABLE nn_perfomance (
-                                        model_uuid text PRIMARY KEY NOT NULL,
+                                        eval_id INTEGER PRIMARY KEY NOT NULL,
+                                        model_uuid text,
                                         time datetime,
                                         model_task text,
                                         accuracy double,
@@ -32,18 +33,9 @@ if not (os.path.exists("../weights")):
 else:
     conn = sqlite3.connect("../weights/neural-network.db")
     cur = conn.cursor()
-<<<<<<< HEAD
-    try:
-        result = cur.execute("SELECT * FROM nn_perfomance LIMIT 1")
-    except sqlite3.Error as e:
-        print(e)
-        print("Assuming table doesn't exist.")
-        sql_create_projects_table = """ CREATE TABLE nn_perfomance (
-                                        model_uuid integer PRIMARY KEY NOT NULL,
-=======
     sql_create_projects_table = """ CREATE TABLE IF NOT EXISTS nn_perfomance (
-                                        model_uuid text PRIMARY KEY NOT NULL,
->>>>>>> 78b43c69e1654e3b4edd35c4cb8f6860ef5b19c8
+                                        eval_id INTEGER PRIMARY KEY NOT NULL,
+                                        model_uuid text,
                                         time datetime,
                                         model_task text,
                                         accuracy double,
@@ -51,13 +43,7 @@ else:
                                         specificity double,
                                         roc_auc double
                                     ); """
-<<<<<<< HEAD
-        cur.execute(sql_create_projects_table)
-        
-
-=======
     cur.execute(sql_create_projects_table)
->>>>>>> 78b43c69e1654e3b4edd35c4cb8f6860ef5b19c8
 
     
 
