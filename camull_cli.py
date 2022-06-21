@@ -1,3 +1,4 @@
+from re import M
 from train_model          import DEVICE, start
 from evaluation           import evaluate_fold, evaluate_model
 from data_declaration     import Task
@@ -17,33 +18,28 @@ global cur
 
 if not (os.path.exists("../weights")):
     os.mkdir("../weights")
-    conn = sqlite3.connect("../weights/neural-network.db")
-    cur = conn.cursor()
-    sql_create_projects_table = """ CREATE TABLE nn_perfomance (
-                                        eval_id INTEGER PRIMARY KEY NOT NULL,
-                                        model_uuid text,
-                                        time datetime,
-                                        model_task text,
-                                        accuracy double,
-                                        sensitivity double,
-                                        specificity double,
-                                        roc_auc double
-                                    ); """
-    cur.execute(sql_create_projects_table)
-else:
-    conn = sqlite3.connect("../weights/neural-network.db")
-    cur = conn.cursor()
-    sql_create_projects_table = """ CREATE TABLE IF NOT EXISTS nn_perfomance (
-                                        eval_id INTEGER PRIMARY KEY NOT NULL,
-                                        model_uuid text,
-                                        time datetime,
-                                        model_task text,
-                                        accuracy double,
-                                        sensitivity double,
-                                        specificity double,
-                                        roc_auc double
-                                    ); """
-    cur.execute(sql_create_projects_table)
+
+
+conn = sqlite3.connect("../weights/neural-network.db")
+cur = conn.cursor()
+sql_create_basic_table = """ CREATE TABLE IF NOT EXISTS nn_basic (
+                            model_id INTEGER PRIMARY KEY NOT NULL,
+                            model_uuid text,
+                            time datetime,
+                            model_task text
+                        ); """
+sql_create_projects_table = """ CREATE TABLE IF NOT EXISTS nn_perfomance (
+                                    eval_id INTEGER PRIMARY KEY NOT NULL,
+                                    model_uuid text,
+                                    time datetime,
+                                    model_task text,
+                                    accuracy double,
+                                    sensitivity double,
+                                    specificity double,
+                                    roc_auc double
+                                ); """
+cur.execute(sql_create_basic_table)
+cur.execute(sql_create_projects_table)
 
     
 
@@ -80,18 +76,20 @@ def basic_run(device):
     elif (int(choice) == 4):
         evaluate_a_model(device)
 
-def make_an_inference(device):
+def make_an_inference(device, mri=None, clin=None):
+
     print("\n")
     print("1. NC vs AD")
     print("2. sMCI vs pMCI")
     print("\n")
     choice = int(input("Which task would you like to perform?: "))
+    
 
     if (choice == 1):
         #fetch the most recent models for NC vs AD.
         print("\n")
         print("Here are the 5 most recent models trained for NC vs AD.")
-        print("model uuid | Time | model task | accuracy | sensitivity | specificity | roc_auc")
+        print("    model uuid               | Time      | model task | accuracy | sensitivity | specificity | roc_auc")
         result = cur.execute("SELECT * FROM nn_perfomance WHERE model_task is 'NC_v_AD' ORDER BY time DESC LIMIT 5")
         model_uuids = []
         for i, row in enumerate(result):
@@ -101,27 +99,52 @@ def make_an_inference(device):
         choice = int(input("Please enter an index to use [1, 5]: "))
         path_a = "../weights/{}/{}/*".format(str(Task(1)), model_uuids[choice-1])
         path = glob.glob(path_a)[0]
-        if (int(choice) != 6):
-            mri, clinical = get_subject_info()
-            mri_t = torch.from_numpy(mri) / 255.0 
-            mri_t = mri_t.unsqueeze(0)
-            mri_t = mri_t.to(device)
-            clin_t = torch.from_numpy(clinical)
-            clin_t = clin_t.unsqueeze(0)
-            clin_t = clin_t.to(device)
-            model = load_cam_model(path)
-            model.eval()
+        while (True):
+            if (int(choice) != 6):
+                if torch.is_tensor(mri) == False:
+                    mri, clinical = get_subject_info()
+                    #Performs necessery transformations for the neural network
+                    mri = torch.from_numpy(mri) / 255.0 
+                    mri = mri.unsqueeze(0)
+                    mri = mri.to(device)
+                    clin = torch.from_numpy(clinical)
+                    clin = clin.unsqueeze(0)
+                    clin = clin.to(device)
 
-            net_out = -1
-            with torch.no_grad():
-                net_out = model((mri_t.view(-1, 1, 110, 110, 110), clin_t.view(1, 21)))
-                print("The probability that the subject has AD is " + str(net_out[0].item()*100)  + "%")
-        else:
-            print("Invalid selection.")
+                model = load_cam_model(path)
+                model.eval()
+
+                net_out = -1
+                with torch.no_grad():
+                    net_out = model((mri.view(-1, 1, 110, 110, 110), clin.view(1, 21)))
+                    print("The probability that the subject has AD is " + str(net_out[0].item()*100)  + "%")
+                    print("\n")
+                    print("The probability is deterministic and hinges upon the neural network model and subject data.")
+                    print("\n")
+                    print("1. Input different subject details for the same model.")
+                    print("2. Use the same subject details for inference with another model.")
+                    print("3. Make a new inference with another model.")
+                    print("4. Return to the main menu.")
+                    print("\n")
+                    choice = int(input("Please enter your choice: "))
+                    if choice == 4:
+                        basic_run(device)
+                    elif choice == 3:
+                        make_an_inference(device)
+                    elif choice == 2:
+                        make_an_inference(device, mri, clin)
+                    elif choice == 1:
+                        mri = None
+                        clin = None
+                        continue
+            else:
+                print("Invalid selection.")
 
     else:
         #fetch the most recent models for sMCI vs pMCI
-        pass
+        print("Here are the 5 most recent models trained for sMCI vs pMCI.")
+        print("    model uuid               | Time      | model task | accuracy | sensitivity | specificity | roc_auc")
+        result = cur.execute("SELECT * FROM nn_perfomance WHERE model_task is 'sMCI_v_pMCI' ORDER BY time DESC LIMIT 5")
 
 def transfer_learning(device):
     print("To train for sMCI vs pMCI you need transfer learning from a NC vs AD model. Would you like to transfer learning from an existing model or train a new NC vs AD model?\n")
@@ -131,7 +154,7 @@ def transfer_learning(device):
     if (int(choice) == 1):
 
         print("Here are 10 of your most recent NC v AD models.")
-        print("model uuid | Time | model task | accuracy | sensitivity | specificity | roc_auc")
+        print("    model uuid               | Time      | model task | accuracy | sensitivity | specificity | roc_auc")
         model_uuids = fetch_models_from_db()
 
         if not model_uuids == []:
@@ -141,14 +164,26 @@ def transfer_learning(device):
             choice = input("How many epochs would you like to train the task sMCI vs pMCI?(default:40): ")
             uuid = start(device, ld_helper, int(choice), model_uuid)
             print("\n")
-            if choice != "":
-                valid = False
-                while(valid==False):
-                    try:
-
-                        valid = True
-                    except:
-                        print("Please input a valid number.")
+            print("\n")
+            print("A new sMCI v pMCI model has been trained under the tag: {}".format(uuid))
+            print("\n")
+            print("Would you like to evaluate it? You must do so for it to be saved to the database.")
+            print("\n")
+            choice = input("Enter your choice [Y/n]: ")
+            if choice == 'Y' or 'y' or '': 
+                choice = 1 
+            else: 
+                choice = 0
+            if (int(choice) == 1):
+                print("\n")
+                print("There are 5 folds to evaluate")
+                print("Input a fold number to evaluate or input 6 to evaluate all folds.")
+                print("\n")
+                choice = int(input("Enter your choice [1,6]: "))
+                if (choice != 6):
+                    evaluate_fold(device, uuid, ld_helper, choice, cur)
+                else:
+                    evaluate_model(device, uuid, ld_helper, cur)
 
         else:
             print("\n")
@@ -174,57 +209,52 @@ def transfer_learning(device):
         else:
             print("Training a new model.")
             uuid = start(ld_helper, 40, uuid)
+    print("The model has been trained.")
+    basic_run(device)
 
 def train_new_model_cli(device):
 
     task = Task.NC_v_AD
     ld_helper = LoaderHelper(task)
 
-    if (True):
-        print("\n")
-        epochs = input("How many epochs would you like to do? (default: 40): ")
-        print("\n")
+    print("\n")
+    epochs = input("How many epochs would you like to do? (default: 40): ")
+    print("\n")
 
-        uuid = ""
-        if epochs == "":
-            uuid = start(device, ld_helper, 40)
-        else:
-            num_epochs = 0
-            try:
-                num_epochs = int(epochs)
-            except:
-                print("Number of epochs must be a valid number.")
-            uuid = start(device, ld_helper, int(epochs))
-
-        print("\n")
-        print("A new NC vs AD model has been trained under the tag: {}".format(uuid))
-        print("\n")
-        print("Would you like to evaluate it?")
-        print("0. Yes")
-        print("1. No")
-        print("\n")
-        choice = input("Enter your choice [Y/n]: ")
-        if choice == 'Y' or 'y' or '': 
-            choice = 1 
-        else: 
-            choice = 0
-        if (int(choice) == 1):
-            print("\n")
-            print("There are 5 folds to evaluate")
-            print("Input a fold number to evaluate or input 6 to evaluate all folds.")
-            print("\n")
-            choice = int(input("Enter your choice [1,6]: "))
-            if (choice != 6):
-                evaluate_fold(device, uuid, ld_helper, choice, cur)
-            else:
-                evaluate_model(device, uuid, ld_helper, cur)
-        else:
-            basic_run(device)
+    uuid = ""
+    if epochs == "":
+        uuid = start(device, ld_helper, 40)
     else:
-        print("To train for sMCI vs pMCI you need transfer learning from a NC vs AD model. Would you like to transfer learning from an existing model or train a new NC vs AD model?\n")
-        print("0. Existing model.")
-        print("1. Train a new NC vs AD model.\n")
-        choice = input("Please select an option: ")
+        num_epochs = 0
+        try:
+            num_epochs = int(epochs)
+            uuid = start(device, ld_helper, int(epochs))
+        except:
+            print("Number of epochs must be a valid number.")
+        uuid = start(device, ld_helper, int(epochs))
+
+    print("\n")
+    print("A new NC vs AD model has been trained under the tag: {}".format(uuid))
+    print("\n")
+    print("Would you like to evaluate it? You must do so for it to be saved to the database.")
+    print("\n")
+    choice = input("Enter your choice [Y/n]: ")
+    if choice == 'Y' or 'y' or '': 
+        choice = 1 
+    else: 
+        choice = 0
+    if (int(choice) == 1):
+        print("\n")
+        print("There are 5 folds to evaluate")
+        print("Input a fold number to evaluate or input 6 to evaluate all folds.")
+        print("\n")
+        choice = int(input("Enter your choice [1,6]: "))
+        if (choice != 6):
+            evaluate_fold(device, uuid, ld_helper, choice, cur)
+        else:
+            evaluate_model(device, uuid, ld_helper, cur)
+    else:
+        basic_run(device)
 
 def evaluate_a_model(device):
     #print out the latest models
@@ -264,7 +294,8 @@ def evaluate_a_model(device):
         print("\n")
         print("No models available. Please train a new model.")
         choice = input("Would you like to train a new model[Y/n]?: ")
-        if choice  == 'y' or 'Y' or '': choice = 2
+        if choice  == 'y' or 'Y' or '': train_new_model_cli 
+        else: basic_run
 
 def fetch_models_from_db():
     global conn
@@ -290,6 +321,8 @@ def get_subject_infor_from_db():
 def get_subject_info():
 
     path = input("Please provide the path to the MRI scan (DEFAULT: ./inference-sample/ad-scan.nii): ")
+    if path == "":
+        path = "./inference-sample/ad-scan.nii"
     mri = get_mri(path)
 
     clinical = {}
@@ -307,6 +340,7 @@ def get_subject_info():
     clinical["ETHNICITY"] = input("What is the subjects ethnicity?(Write it out fully): ")
     print("\n")
     print("Here are the available racial categories. Please choose one from the above: ")
+    print("\n")
     print("a) Am Indian/Alaskan")
     print("b) Asian")
     print("c) Black")
