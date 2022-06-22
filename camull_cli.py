@@ -41,13 +41,22 @@ sql_create_projects_table = """ CREATE TABLE IF NOT EXISTS nn_perfomance (
 cur.execute(sql_create_basic_table)
 cur.execute(sql_create_projects_table)
 
-    
+def check_unevaluated():
+    unevaluated_count = """ SELECT model_uuid 
+                            FROM   nn_basic 
+                            WHERE  model_uuid NOT IN (SELECT model_uuid FROM nn_perfomance)"""
+    out = cur.execute(unevaluated_count)
+    for i, row in enumerate(out):
+        continue
+    print("You have {} models that can be evaluated.".format(i))
+
 
 def advanced_run():
     '''The advanced run allows the user to tweak the hyper-parameters.'''
 
 def basic_run(device):
     '''The basic run doesn't give the user option to tweak the hyper-parameters.'''
+    check_unevaluated()
 
     print("\n")
     print("Welcome to Camull.\n")
@@ -155,7 +164,7 @@ def transfer_learning(device):
 
         print("Here are 10 of your most recent NC v AD models.")
         print("    model uuid               | Time      | model task | accuracy | sensitivity | specificity | roc_auc")
-        model_uuids = fetch_models_from_db()
+        model_uuids = fetch_models_from_db(task=Task.NC_v_AD)
 
         if not model_uuids == []:
             choice = input("Please enter the model number [1, 10] or the uuid that you would like to choose:")
@@ -214,7 +223,18 @@ def transfer_learning(device):
 
 def train_new_model_cli(device):
 
-    task = Task.NC_v_AD
+    print("\n")
+    print("Camull-Net can be trained for two seperate tasks.")
+    print("1. NC v AD : Distinguishing between subjects from the normal cohort group and subjects with Alzheimers Disease.")
+    print("2. sMCI v pMCI : Distinguishing between subjects with static mild cognitive impairement and progressive mild cognitive impairement.")
+    print("\n")
+    choice = input("Please enter your choice [(1),2]:")
+    if choice == "" : choice = 1
+    else: choice = int(choice)
+
+    if choice == 1: task = Task.NC_v_AD
+    else: task = Task.sMCI_v_pMCI
+
     ld_helper = LoaderHelper(task)
 
     print("\n")
@@ -225,16 +245,13 @@ def train_new_model_cli(device):
     if epochs == "":
         uuid = start(device, ld_helper, 40)
     else:
-        num_epochs = 0
         try:
-            num_epochs = int(epochs)
             uuid = start(device, ld_helper, int(epochs))
         except:
             print("Number of epochs must be a valid number.")
-        uuid = start(device, ld_helper, int(epochs))
 
     print("\n")
-    print("A new NC vs AD model has been trained under the tag: {}".format(uuid))
+    print("A new {} model has been trained under the tag: {}".format(str(task), uuid))
     print("\n")
     print("Would you like to evaluate it? You must do so for it to be saved to the database.")
     print("\n")
@@ -254,14 +271,24 @@ def train_new_model_cli(device):
         else:
             evaluate_model(device, uuid, ld_helper, cur)
     else:
-        basic_run(device)
+        basic_run(device) #loop back round to the start of the program.
 
 def evaluate_a_model(device):
-    #print out the latest models
-    print("Here are 10 of your most recent NC v AD models.")
+    print("Which task would you like to evaluate?")
+    print("1) NC v AD")
+    print("2) sMCI v pMCI")
+
+    choice = int(input("Please enter your input [1..2]: "))
+    task = Task
+    if choice == 1:
+        task = Task.NC_v_AD
+    else:
+        task = Task.sMCI_v_pMCI
+
+    print("Here are 10 of your most recent unevaluated {} models.".format(str(task)))
     print("\n")
     print("    model uuid               | Time      | model task | accuracy | sensitivity | specificity | roc_auc")
-    model_uuids = fetch_models_from_db()
+    model_uuids = fetch_models_from_db(task)
     target_uuid = ""
 
     if not model_uuids == []:
@@ -278,16 +305,16 @@ def evaluate_a_model(device):
                         break
                 print("Please enter a valid input.")
         
-        task = Task.NC_v_AD
         ld_helper = LoaderHelper(task)
         print("There are 5 folds to evaluate")
         print("Input a fold number to evaluate or input 6 to evaluate all folds.")
         print("\n")
         choice = int(input("Enter your choice [1,6]: "))
         if (choice != 6):
-            evaluate_fold(device, target_uuid, ld_helper, choice, commit_to_db=False)
+            evaluate_fold(device, target_uuid, ld_helper, choice, commit_to_db=True)
+            remove_from_db(target_uuid)
         else:
-            evaluate_model(device, target_uuid, ld_helper, commit_to_db=False)
+            evaluate_model(device, target_uuid, ld_helper, cur)
         
 
     else:
@@ -297,15 +324,21 @@ def evaluate_a_model(device):
         if choice  == 'y' or 'Y' or '': train_new_model_cli 
         else: basic_run
 
-def fetch_models_from_db():
+def fetch_models_from_db(task, evaluated=False):
     global conn
     global cur
     model_uuids = []
     i = 0
-    for i, row in enumerate(cur.execute('SELECT * FROM nn_perfomance')):
+    for i, row in enumerate(cur.execute("SELECT * FROM nn_basic WHERE model_task is '{}'".format(str(task)))):
         print(str(i+1) + ". ", row)
-        model_uuids.append(row[i+1])
+        model_uuids.append(row[1])
     return model_uuids
+
+
+def remove_from_db(model_uuid):
+    sql_statement = "DROP * FROM nn_basic WHERE model_uuid is " + model_uuid ################
+    cur.execute(sql_statement)
+    conn.commit()
 
 
 def get_subject_infor_from_db():
