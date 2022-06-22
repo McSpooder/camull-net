@@ -312,6 +312,7 @@ def evaluate_a_model(device):
         choice = int(input("Enter your choice [1,6]: "))
         if (choice != 6):
             evaluate_fold(device, target_uuid, ld_helper, choice, commit_to_db=True)
+            remove_from_db(target_uuid)
         else:
             evaluate_model(device, target_uuid, ld_helper, cur)
             remove_from_db(target_uuid)

@@ -9,6 +9,7 @@ The code was developed as part of my dissertation at the university of Hull. You
 ## Features
 
 * Program
+  * Comes with pre-trained models for alzheimers prediction and mild cognitive impairment conversion.
   * Performs k-fold cross validation
   * Loads and saves neural network models
   * Logs the train and test loss
@@ -16,6 +17,8 @@ The code was developed as part of my dissertation at the university of Hull. You
   * Saves each model under a unique identifier in a neat directory structure
   * Comes with an interface for submitting clinical user data.
 * Neural Net
+  * Distinguishes between subjects that are normal and that have alzeimers disease.
+  * Can predict whether a subject will convert to alzheimers disease within 3 years.
   * 3D seperable convolution to reduce number of parameters and hence overfitting.
   * Multiple concurrent data streams
     * MRI Data
@@ -46,6 +49,7 @@ You must place the data folder in a directory above the project folder. The data
 
 ## How to use
 1. Place your data in the directory above. (See [wiki](https://github.com/McSpooder/camull_net/wiki/Data-Requirements)) 
+2. Download the pretrained [weights and database](https://drive.google.com/drive/folders/1lXsZymYNzyt185fBtLR2ZdEsLct4igHQ?usp=sharing) and put it in a directory above. 
 2. Run "python camull_cli.py"
 3. First train a model on the task NC vs AD.
 4. Evaluate the model if you wish.
