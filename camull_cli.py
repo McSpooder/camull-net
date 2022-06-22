@@ -315,7 +315,9 @@ def evaluate_a_model(device):
         else:
             evaluate_model(device, target_uuid, ld_helper, cur)
             remove_from_db(target_uuid)
-        
+
+        print("The model has been evaluated. Check the graphs folder and look at the metrics in the database.")
+        basic_run(device)
 
     else:
         print("\n")
@@ -340,7 +342,7 @@ def fetch_models_from_db(task=None, evaluated=False):
 
 
 def remove_from_db(model_uuid):
-    sql_statement = "DELETE FROM nn_basic WHERE model_uuid is '" + model_uuid + "'"
+    sql_statement = "DELETE FROM nn_basic WHERE model_uuid is '" + model_uuid + "';"
     cur.execute(sql_statement)
 
 
