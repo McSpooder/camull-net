@@ -80,6 +80,9 @@ def start(device, ld_helper, epochs, model_uuid=None):
 
         for k_ind in range(k_folds):
 
+            print("\n")
+            print("=========== Training on Fold {} ===========".format(k_ind))
+
             if model_cop is None:
                 model = build_arch()
             else:
@@ -90,6 +93,7 @@ def start(device, ld_helper, epochs, model_uuid=None):
             save_weights(model, uuid_, fold=k_ind+1, task=task)
 
             folds_c.update()
+
 
         folds_c.count = 0
 
@@ -129,12 +133,12 @@ def start(device, ld_helper, epochs, model_uuid=None):
             epochs_c.update()
 
         epochs_c.count = 0
-        epochs_c.update()
+        #epochs_c.update()
 
 
     manager = enlighten.get_manager()
     folds_c = manager.counter(total=5, desc='Fold', unit='folds')
-    epochs_c = manager.counter(total=40, desc='Epochs', unit='epochs')
+    epochs_c = manager.counter(total=epochs, desc='Epochs', unit='epochs')
     batches_c = manager.counter(total=75, desc='Batches', unit='batches')
 
     task = ld_helper.get_task()
