@@ -45,9 +45,11 @@ def check_unevaluated():
                             FROM   nn_basic 
                             WHERE  model_uuid NOT IN (SELECT model_uuid FROM nn_perfomance)"""
     out = cur.execute(unevaluated_count)
+    i=0
     for i, row in enumerate(out):
         continue
     print("You have {} models that can be evaluated.".format(i))
+
 
 
 def advanced_run():
