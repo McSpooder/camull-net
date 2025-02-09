@@ -1,8 +1,8 @@
 name: cam-env
 channels:
-  - conda-forge
   - pytorch
   - nvidia
+  - conda-forge
 dependencies:
   - python==3.10
   - pytorch
@@ -15,5 +15,6 @@ dependencies:
   - pandas
   - matplotlib
   - scikit-learn
-  - numpy
+  - numpy<2
+  - jinxed
 prefix: /home/danny/miniconda3/envs/cam-env

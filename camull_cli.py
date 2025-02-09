@@ -15,9 +15,17 @@ import glob
 global conn
 global cur
 
+
+# Set the working directory to the script's directory
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
 if not (os.path.exists("../weights")):
     os.mkdir("../weights")
 
+
+print(torch.cuda.is_available())  # Should return True if GPU is available
+print(torch.cuda.device_count())  # Number of GPUs available
+print(torch.cuda.get_device_name(0))  # Name of the first GPU
 
 conn = sqlite3.connect("../weights/neural-network.db")
 cur = conn.cursor()
