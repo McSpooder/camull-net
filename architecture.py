@@ -164,7 +164,114 @@ class Camull(nn.Module):
         out       = self.sig(out)
         
         return out
-    
+
+class ImprovedCamull(nn.Module):
+    def __init__(self):
+        super().__init__()
+        
+        # Improved MRI processing branch
+        self.mri_encoder = nn.ModuleList([
+            # Initial conv with smaller kernel and no stride
+            ConvBlock(1, 32, (3,3,3), k_stride=1),
+            ConvBlock(32, 64, (3,3,3)),
+            ConvBlock(64, 96, (3,3,3))
+        ])
+        
+        # Residual blocks for better feature extraction
+        self.res_blocks = nn.ModuleList([
+            ResidualBlock(96),
+            ResidualBlock(96),
+            ResidualBlock(96)
+        ])
+        
+        # Clinical data processing with attention
+        self.clinical_encoder = nn.Sequential(
+            FCBlock(21, 32),
+            FCBlock(32, 32)
+        )
+        
+        # Attention mechanism for better feature fusion
+        self.attention = MultiModalAttention(96, 32)
+        
+        # Final classification layers
+        self.classifier = nn.Sequential(
+            FCBlock(96 + 32, 64),
+            FCBlock(64, 32),
+            nn.Linear(32, 1),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        mri, clinical = x
+        
+        # MRI processing with residual connections
+        mri_features = mri
+        skip_connections = []
+        
+        # Encoder path with skip connections
+        for encoder in self.mri_encoder:
+            mri_features = encoder(mri_features)
+            skip_connections.append(mri_features)
+        
+        # Residual blocks
+        for res_block in self.res_blocks:
+            mri_features = res_block(mri_features)
+        
+        # Process clinical data
+        clinical_features = self.clinical_encoder(clinical)
+        
+        # Attention-based fusion
+        fused_features = self.attention(mri_features, clinical_features)
+        
+        # Final classification
+        out = self.classifier(fused_features)
+        
+        return out
+
+class ResidualBlock(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.conv1 = nn.Conv3d(channels, channels, 3, padding=1)
+        self.bn1 = nn.BatchNorm3d(channels)
+        self.conv2 = nn.Conv3d(channels, channels, 3, padding=1)
+        self.bn2 = nn.BatchNorm3d(channels)
+        self.elu = nn.ELU()
+        self.dropout = nn.Dropout3d(0.1)
+        
+    def forward(self, x):
+        identity = x
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.elu(out)
+        out = self.dropout(out)
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = out + identity
+        out = self.elu(out)
+        return out
+
+class MultiModalAttention(nn.Module):
+    def __init__(self, mri_channels, clinical_channels):
+        super().__init__()
+        self.attention = nn.Sequential(
+            nn.Linear(mri_channels + clinical_channels, 64),
+            nn.ReLU(),
+            nn.Linear(64, mri_channels),
+            nn.Sigmoid()
+        )
+        
+    def forward(self, mri_features, clinical_features):
+        # Flatten MRI features for attention
+        b, c, h, w, d = mri_features.shape
+        mri_flat = mri_features.view(b, c, -1).mean(-1)
+        
+        # Compute attention weights
+        combined = torch.cat([mri_flat, clinical_features], dim=1)
+        weights = self.attention(combined).unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+        
+        # Apply attention and concatenate features
+        attended_mri = (mri_features * weights).view(b, -1)
+        return torch.cat([attended_mri, clinical_features], dim=1)
        
 def load_cam_model(path):
     model = torch.load(path)
