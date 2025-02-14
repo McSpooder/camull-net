@@ -77,10 +77,8 @@ def get_label(path, labels):
 def get_mri(path):
     '''Gets a numpy array representing the mri object from a file path'''
     mri = nib.load(str(path)).get_fdata()
-    mri.resize(1, 110, 110, 110)
-    mri = np.asarray(mri)
-
-    return mri
+    mri = mri.reshape(1, 110, 110, 110)  # Using reshape instead of resize
+    return mri.astype(np.float32)  # Ensure float32 type for consistency
 
 def get_clinical(im_id, clin_df):
     '''Gets clinical features vector by searching dataframe for image id'''
@@ -151,12 +149,24 @@ class MRIDataset(Dataset):
         return sample
 
 class ToTensor():
-    '''Convert ndarrays in sample to Tensors.'''
+    '''Convert ndarrays in sample to Tensors with proper normalization'''
     def __call__(self, sample):
         image, clinical, label = sample['mri'], sample['clinical'], sample['label']
-        mri_t = torch.from_numpy(image) / 255.0
+        
+        # Proper MRI normalization using z-score for non-zero voxels
+        mask = image != 0
+        mean = image[mask].mean()
+        std = image[mask].std()
+        normalized_mri = np.zeros_like(image, dtype=np.float32)
+        normalized_mri[mask] = (image[mask] - mean) / (std + 1e-10)
+        
+        # Convert to tensors
+        mri_t = torch.from_numpy(normalized_mri)
         clin_t = torch.from_numpy(clinical)
         label = torch.from_numpy(label).double()
-        return {'mri': mri_t,
-                'clin_t': clin_t,
-                'label': label}
+        
+        return {
+            'mri': mri_t,
+            'clin_t': clin_t,
+            'label': label
+        }
