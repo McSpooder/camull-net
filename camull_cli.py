@@ -1,3 +1,4 @@
+# At the very top of camull_cli.py
 from train_model          import start
 from evaluation           import evaluate_fold, evaluate_model
 from data_declaration     import Task
@@ -22,10 +23,11 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 if not (os.path.exists("../weights")):
     os.mkdir("../weights")
 
+if not (os.path.exists("../models")):
+    os.mkdir("../models")
 
-print(torch.cuda.is_available())  # Should return True if GPU is available
-print(torch.cuda.device_count())  # Number of GPUs available
-print(torch.cuda.get_device_name(0))  # Name of the first GPU
+
+
 
 conn = sqlite3.connect("../weights/neural-network.db")
 cur = conn.cursor()
@@ -47,6 +49,14 @@ sql_create_projects_table = """ CREATE TABLE IF NOT EXISTS nn_perfomance (
                                 ); """
 cur.execute(sql_create_basic_table)
 cur.execute(sql_create_projects_table)
+
+def check_gpu():
+    print("\n=== GPU Check from function ===")
+    print(f"File executing check: {__file__}")
+    print(f"Available: {torch.cuda.is_available()}")
+    print(f"Count: {torch.cuda.device_count()}")
+    print(f"Name: {torch.cuda.get_device_name(0)}")
+    print("==============================\n")
 
 def check_unevaluated():
     unevaluated_count = """ SELECT model_uuid 
@@ -231,57 +241,114 @@ def transfer_learning(device):
     basic_run(device)
 
 def train_new_model_cli(device):
-
     print("\n")
     print("Camull-Net can be trained for two seperate tasks.")
     print("1. NC v AD : Distinguishing between subjects from the normal cohort group and subjects with Alzheimers Disease.")
     print("2. sMCI v pMCI : Distinguishing between subjects with static mild cognitive impairement and progressive mild cognitive impairement.")
     print("\n")
     choice = input("Please enter your choice [(1),2]:")
-    if choice == "" : choice = 1
-    else: choice = int(choice)
+    if choice == "": 
+        choice = 1
+    else: 
+        choice = int(choice)
 
-    if choice == 1: task = Task.NC_v_AD
-    else: task = Task.sMCI_v_pMCI
+    if choice == 1: 
+        task = Task.NC_v_AD
+    else: 
+        task = Task.sMCI_v_pMCI
 
     ld_helper = LoaderHelper(task)
+
+    # Keep asking for epochs until valid input is received
 
     print("\n")
     epochs = input("How many epochs would you like to do? (default: 40): ")
     print("\n")
 
-    uuid = ""
-    if epochs == "":
-        uuid = start(device, ld_helper, 40)
-    else:
-        try:
-            uuid = start(device, ld_helper, int(epochs))
-        except:
-            print("Number of epochs must be a valid number.")
+    uuid = None
+    try:
+        if epochs == "":
+            uuid = start(device, ld_helper, 40)
+        else:
+            epochs_num = int(epochs)
+            uuid = start(device, ld_helper, epochs_num)
+            
+        if uuid is None:
+            print("Training failed to complete successfully.")
+            return
+            
+        # Continue with evaluation options only if we have a valid UUID
+        print("\n")
+        print(f"A new {str(task)} model has been trained under the tag: {uuid}")
+        print("\n")
+        print("Would you like to evaluate it? You must do so for it to be saved to the database.")
+        print("\n")
+        
+        while True:
+            choice = input("Enter your choice [Y/n]: ").lower()
+            if choice in ['y', 'yes', '']: 
+                print("\n")
+                print("There are 5 folds to evaluate")
+                print("Input a fold number to evaluate or input 6 to evaluate all folds.")
+                print("\n")
+                
+                try:
+                    choice = int(input("Enter your choice [1,6]: "))
+                    if 1 <= choice <= 6:
+                        if choice != 6:
+                            evaluate_fold(device, uuid, ld_helper, choice, cur)
+                        else:
+                            evaluate_model(device, uuid, ld_helper, cur)
+                        break
+                    else:
+                        print("Please enter a number between 1 and 6")
+                except ValueError:
+                    print("Please enter a valid number")
+            elif choice in ['n', 'no']:
+                break
+            else:
+                print("Please enter Y or N")
+                
+    except ValueError:
+        print("Number of epochs must be a valid number.")
+    except Exception as e:
+        print(f"An error occurred during training: {str(e)}")
 
     print("\n")
-    print("A new {} model has been trained under the tag: {}".format(str(task), uuid))
+    print(f"A new {str(task)} model has been trained under the tag: {uuid}")
     print("\n")
     print("Would you like to evaluate it? You must do so for it to be saved to the database.")
     print("\n")
-    choice = input("Enter your choice [Y/n]: ")
-    if choice == 'Y' or 'y' or '': 
-        choice = 1 
-    else: 
-        choice = 0
-    if (int(choice) == 1):
-        print("\n")
-        print("There are 5 folds to evaluate")
-        print("Input a fold number to evaluate or input 6 to evaluate all folds.")
-        print("\n")
-        choice = int(input("Enter your choice [1,6]: "))
-        if (choice != 6):
-            evaluate_fold(device, uuid, ld_helper, choice, cur)
+    
+    while True:
+        choice = input("Enter your choice [Y/n]: ").lower()
+        if choice in ['y', 'yes', '']: 
+            print("\n")
+            print("There are 5 folds to evaluate")
+            print("Input a fold number to evaluate or input 6 to evaluate all folds.")
+            print("\n")
+            
+            try:
+                choice = int(input("Enter your choice [1,6]: "))
+                if choice >= 1 and choice <= 6:
+                    if choice != 6:
+                        evaluate_fold(device, uuid, ld_helper, choice, cur)
+                    else:
+                        evaluate_model(device, uuid, ld_helper, cur)
+                    break
+                else:
+                    print("Please enter a number between 1 and 6")
+                    continue
+            except ValueError:
+                print("Please enter a valid number")
+                continue
+        elif choice in ['n', 'no']:
+            break
         else:
-            evaluate_model(device, uuid, ld_helper, cur)
-    else:
-        basic_run(device) #loop back round to the start of the program.
+            print("Please enter Y or N")
+            continue
 
+    return  # Return to main menu
 
 def evaluate_a_model(device):
     print("Which task would you like to evaluate?")
@@ -415,7 +482,7 @@ def get_subject_info():
 
 
 def __main__():
-
+    check_gpu()  # Call it once here
     device = None
     if torch.cuda.is_available():
         device = torch.device("cuda:0")
@@ -428,4 +495,6 @@ def __main__():
 
 
 if __name__ == '__main__':
+    import multiprocessing
+    multiprocessing.set_start_method('spawn', force=True)
     __main__()

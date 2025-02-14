@@ -83,12 +83,13 @@ def get_mri(path):
 def get_clinical(im_id, clin_df):
     '''Gets clinical features vector by searching dataframe for image id'''
     clinical = np.zeros(21)
-
+    
     row = clin_df.loc[clin_df["Image Data ID"] == im_id]
-
+    
+    # Use iloc consistently for integer-based indexing
     for k in range(1, 22):
-        clinical[k-1] = row.iloc[0][k]
-
+        clinical[k-1] = row.iloc[0].iloc[k]  # or use: row.iloc[0, k]
+    
     return clinical
 
 
@@ -149,7 +150,7 @@ class MRIDataset(Dataset):
         return sample
 
 class ToTensor():
-    '''Convert ndarrays in sample to Tensors with proper normalization'''
+    '''Convert ndarrays in sample to Tensors with proper normalization and type'''
     def __call__(self, sample):
         image, clinical, label = sample['mri'], sample['clinical'], sample['label']
         
@@ -157,12 +158,12 @@ class ToTensor():
         mask = image != 0
         mean = image[mask].mean()
         std = image[mask].std()
-        normalized_mri = np.zeros_like(image, dtype=np.float32)
+        normalized_mri = np.zeros_like(image, dtype=np.float64)  # Changed to float64
         normalized_mri[mask] = (image[mask] - mean) / (std + 1e-10)
         
-        # Convert to tensors
-        mri_t = torch.from_numpy(normalized_mri)
-        clin_t = torch.from_numpy(clinical)
+        # Convert to tensors with double precision
+        mri_t = torch.from_numpy(normalized_mri).double()  # Explicitly convert to double
+        clin_t = torch.from_numpy(clinical).double()  # Explicitly convert to double
         label = torch.from_numpy(label).double()
         
         return {

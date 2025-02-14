@@ -4,17 +4,19 @@ channels:
   - nvidia
   - conda-forge
 dependencies:
-  - python==3.10
+  - python=3.10
   - pytorch
   - torchvision
   - torchaudio
   - pytorch-cuda=11.7
-  - enlighten
-  - tqdm
-  - nibabel
-  - pandas
-  - matplotlib
-  - scikit-learn
-  - numpy<2
-  - jinxed
+  - pip
+  - nibabel         # For MRI files
+  - numpy<2         # Version constraint for compatibility
+  - pandas          # Data handling
+  - scikit-learn    # ML utilities
+  - matplotlib      # Visualization
+  - tqdm           # Progress bars
+  - pip:
+    - antspyx       # Advanced neuroimaging tools
+    - nilearn       # Neuroimaging specific tools
 prefix: /home/danny/miniconda3/envs/cam-env

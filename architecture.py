@@ -7,26 +7,20 @@ import numpy as np
 
 
 class ConvBlock(nn.Module):
-
     def __init__(self, c_in, c_out, ks, k_stride=1):
-
         super().__init__()
-
-        self.conv1 = nn.Conv3d(c_in, c_out, ks, stride=k_stride, padding=(1, 1, 1))
+        self.conv1 = nn.Conv3d(c_in, c_out, ks, stride=k_stride, padding='same')
         self.bn = nn.BatchNorm3d(c_out)
-        self.elu = nn.ELU()
-        self.pool = nn.MaxPool3d(kernel_size=(3, 3, 3), stride=2)
+        self.relu = nn.ReLU()
+        self.pool = nn.MaxPool3d(kernel_size=2, stride=2)  # Changed pooling size
         self.dropout = nn.Dropout3d(p=0.1)
 
-        
     def forward(self, x):
-        
         out = self.conv1(x)
         out = self.bn(out)
-        out = self.elu(out)
+        out = self.relu(out)
         out = self.pool(out)
         out = self.dropout(out)
-        
         return out
 
 
@@ -169,64 +163,79 @@ class ImprovedCamull(nn.Module):
     def __init__(self):
         super().__init__()
         
-        # Improved MRI processing branch
+        # Calculate the feature size after convolutions
+        self.input_shape = (110, 110, 110)
+        
+        # MRI processing branch
         self.mri_encoder = nn.ModuleList([
             # Initial conv with smaller kernel and no stride
-            ConvBlock(1, 32, (3,3,3), k_stride=1),
-            ConvBlock(32, 64, (3,3,3)),
-            ConvBlock(64, 96, (3,3,3))
+            ConvBlock(1, 32, (3,3,3), k_stride=1),  # Output: 32 x 54 x 54 x 54
+            ConvBlock(32, 64, (3,3,3)),            # Output: 64 x 26 x 26 x 26
+            ConvBlock(64, 96, (3,3,3))             # Output: 96 x 12 x 12 x 12
         ])
         
-        # Residual blocks for better feature extraction
-        self.res_blocks = nn.ModuleList([
-            ResidualBlock(96),
-            ResidualBlock(96),
-            ResidualBlock(96)
-        ])
+        # Calculate the size after convolutions
+        self._calculate_conv_output_size()
         
-        # Clinical data processing with attention
+        # Clinical data processing
         self.clinical_encoder = nn.Sequential(
             FCBlock(21, 32),
             FCBlock(32, 32)
         )
         
-        # Attention mechanism for better feature fusion
-        self.attention = MultiModalAttention(96, 32)
+        # Add a dimension reduction layer before fusion
+        self.dim_reduction = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(self.conv_output_size, 256),
+            nn.ReLU(),
+            nn.Dropout(0.3)
+        )
         
         # Final classification layers
         self.classifier = nn.Sequential(
-            FCBlock(96 + 32, 64),
-            FCBlock(64, 32),
+            nn.Linear(256 + 32, 64),  # 256 from MRI + 32 from clinical
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(64, 32),
+            nn.ReLU(),
+            nn.Dropout(0.3),
             nn.Linear(32, 1),
             nn.Sigmoid()
         )
 
+    def _calculate_conv_output_size(self):
+        # Helper function to calculate output size after convolutions
+        x = torch.zeros(1, 1, *self.input_shape)
+        
+        # Pass through convolution layers
+        for conv in self.mri_encoder:
+            x = conv(x)
+        
+        self.conv_output_size = x.numel() // x.size(0)
+        print(f"Convolution output size: {self.conv_output_size}")
+
     def forward(self, x):
         mri, clinical = x
         
-        # MRI processing with residual connections
+        # Process MRI data
         mri_features = mri
-        skip_connections = []
-        
-        # Encoder path with skip connections
         for encoder in self.mri_encoder:
             mri_features = encoder(mri_features)
-            skip_connections.append(mri_features)
         
-        # Residual blocks
-        for res_block in self.res_blocks:
-            mri_features = res_block(mri_features)
+        # Reduce MRI feature dimensions
+        mri_features = self.dim_reduction(mri_features)
         
         # Process clinical data
         clinical_features = self.clinical_encoder(clinical)
         
-        # Attention-based fusion
-        fused_features = self.attention(mri_features, clinical_features)
+        # Concatenate features
+        combined = torch.cat([mri_features, clinical_features], dim=1)
         
         # Final classification
-        out = self.classifier(fused_features)
+        out = self.classifier(combined)
         
         return out
+
 
 class ResidualBlock(nn.Module):
     def __init__(self, channels):

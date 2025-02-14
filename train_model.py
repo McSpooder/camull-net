@@ -2,19 +2,25 @@
 
 import glob
 from data_declaration import Task
-from architecture     import load_cam_model, Camull
-
+from architecture     import load_cam_model, Camull, ImprovedCamull
 import torch
 import torch.nn    as nn
 import torch.optim as optim
 
+from   sklearn.metrics   import roc_auc_score
+
 import enlighten
 from tqdm.auto import tqdm
 
+import copy
 import os
 import sys
 import datetime
 import uuid
+
+import numpy as np
+
+_manager = enlighten.get_manager()  # Single manager instance
 
 DEVICE = None
 
@@ -58,100 +64,282 @@ def start(device, ld_helper, epochs, model_uuid=None):
 
     def build_arch():
         '''Function for instantiating the pytorch neural network object'''
-        net = Camull()
-
+        net = ImprovedCamull()
+        
+        # Convert all parameters to double precision
+        for param in net.parameters():
+            param.data = param.data.double()
+        
         if torch.cuda.device_count() > 1:
             print("Let's use", torch.cuda.device_count(), "GPUs!")
             net = nn.DataParallel(net)
-
+        
         net.to(DEVICE)
         net.double()
-
+        
         return net
 
     def train_camull(ld_helper, k_folds=5, model=None, epochs=40):
-        '''The function for training the camull network'''
+        print(f"\nEntering train_camull function")
+        print(f"Current module: {__name__}")
+        try:
+            print(f"Type of epochs: {type(epochs)}, Value: {epochs}")
+            print(f"Starting training with {k_folds} folds")
+            
+            folds_c.total = k_folds
+            task = ld_helper.get_task()
+            uuid_ = uuid.uuid4().hex
+            model_cop = model
+            
+            # Track metrics across folds
+            fold_metrics = []
+            best_val_auc = 0
+            best_model_state = None
+            
+            for k_ind in range(k_folds):
+                print(f"\n=========== Training on Fold {k_ind + 1}/{k_folds} ===========")
+                
+                if model_cop is None:
+                    model = build_arch()
+                else:
+                    model = model_cop
+                
+                train_dl = ld_helper.get_train_dl(k_ind)
+                val_dl = ld_helper.get_val_dl(k_ind)
+                
+                print(f"Starting train_loop with epochs={epochs}")
+                fold_history = train_loop(model, train_dl, val_dl, epochs)
+                fold_metrics.append(fold_history)
+                
+                # Save if best model
+                if fold_history['best_val_auc'] > best_val_auc:
+                    best_val_auc = fold_history['best_val_auc']
+                    best_model_state = copy.deepcopy(model.state_dict())
+                
+                # Save fold weights
+                save_weights(model, uuid_, fold=k_ind+1, task=task)
+                folds_c.update()
 
-        folds_c.total = k_folds
-
-        task = ld_helper.get_task()
-        uuid_ = uuid.uuid4().hex
-        model_cop = model
-
-        for k_ind in range(k_folds):
-
-            print("\n")
-            print("=========== Training on Fold {} ===========".format(k_ind))
-
-            if model_cop is None:
-                model = build_arch()
-            else:
-                model = model_cop
-
-            train_dl = ld_helper.get_train_dl(k_ind)
-            train_loop(model, train_dl, epochs)
-            save_weights(model, uuid_, fold=k_ind+1, task=task)
-
-            folds_c.update()
-
-
+        except Exception as e:
+            print(f"Error occurred: {str(e)}")
+            print(f"Error type: {type(e)}")
+            import traceback
+            traceback.print_exc()
+        
+        # Save best model across all folds
+        if best_model_state is not None:
+            torch.save(best_model_state, f'../models/best_model_{uuid_}.pth')
+            
+        # Print final cross-validation results
+        print_cv_results(fold_metrics)
+        
         folds_c.count = 0
-
         return uuid_
 
-    def train_loop(model_in, train_dl, epochs):
-        '''Function containing the neural net model training loop'''
-
+    def train_loop(model, train_dl, val_dl, epochs):
+        '''Enhanced training loop with validation and metrics tracking'''
+        
         epochs_c.total = epochs
         batches_c.total = len(train_dl)
-
-        optimizer = optim.Adam(model_in.parameters(), lr=0.001, weight_decay=5e-5)
-
+        
+        optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=5e-5)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode='max', factor=0.5, patience=5, verbose=True
+        )
         loss_function = nn.BCELoss()
-
-        model_in.train()
-
-        for i in range(epochs):
-
-            for _, sample_batched in enumerate(train_dl):
-
-                batch_x = sample_batched['mri'].to(DEVICE)
-                batch_xb = sample_batched['clin_t'].to(DEVICE)
-                batch_y = sample_batched['label'].to(DEVICE)
-
-                model_in.zero_grad()
-                outputs = model_in((batch_x, batch_xb))
-
-                loss = loss_function(outputs, batch_y)
-                loss.backward()
-                optimizer.step()
-                batches_c.update()
+        
+        history = {
+            'train_loss': [], 'val_loss': [],
+            'train_auc': [], 'val_auc': [],
+            'best_val_auc': 0,
+            'best_epoch': 0
+        }
+        
+        for epoch in range(epochs):
+            # Training phase
+            model.train()
+            train_losses = []
+            train_preds = []
+            train_labels = []
+            
+            for batch_idx, sample_batched in enumerate(train_dl):
+                try:
+                    batch_x = sample_batched['mri'].to(DEVICE)
+                    batch_xb = sample_batched['clin_t'].to(DEVICE)
+                    batch_y = sample_batched['label'].to(DEVICE)
+                    
+                    # Forward pass
+                    model.zero_grad()
+                    outputs = model((batch_x, batch_xb))
+                    
+                    # Check for NaN values
+                    if torch.isnan(outputs).any():
+                        print(f"NaN detected in outputs at epoch {epoch}, batch {batch_idx}")
+                        continue
+                    
+                    loss = loss_function(outputs, batch_y)
+                    
+                    # Backward pass
+                    loss.backward()
+                    optimizer.step()
+                    
+                    # Track metrics
+                    train_losses.append(loss.item())
+                    train_preds.extend(outputs.detach().cpu().numpy())
+                    train_labels.extend(batch_y.cpu().numpy())
+                    
+                    batches_c.update()
+                    
+                except Exception as e:
+                    print(f"Error in training batch {batch_idx}: {str(e)}")
+                    continue
+            
+            # Validation phase
+            model.eval()
+            val_losses = []
+            val_preds = []
+            val_labels = []
+            
+            with torch.no_grad():
+                for batch_idx, sample_batched in enumerate(val_dl):
+                    try:
+                        batch_x = sample_batched['mri'].to(DEVICE)
+                        batch_xb = sample_batched['clin_t'].to(DEVICE)
+                        batch_y = sample_batched['label'].to(DEVICE)
+                        
+                        outputs = model((batch_x, batch_xb))
+                        
+                        if torch.isnan(outputs).any():
+                            print(f"NaN detected in validation outputs at epoch {epoch}, batch {batch_idx}")
+                            continue
+                            
+                        loss = loss_function(outputs, batch_y)
+                        
+                        val_losses.append(loss.item())
+                        val_preds.extend(outputs.cpu().numpy())
+                        val_labels.extend(batch_y.cpu().numpy())
+                        
+                    except Exception as e:
+                        print(f"Error in validation batch {batch_idx}: {str(e)}")
+                        continue
+            
+            try:
+                # Calculate epoch metrics
+                if train_losses:
+                    train_loss = np.mean(train_losses)
+                else:
+                    train_loss = float('nan')
+                    
+                if val_losses:
+                    val_loss = np.mean(val_losses)
+                else:
+                    val_loss = float('nan')
+                
+                # Print raw values for debugging
+                print(f"Train predictions shape: {np.array(train_preds).shape}")
+                print(f"Train labels shape: {np.array(train_labels).shape}")
+                print(f"Sample of predictions: {train_preds[:5]}")
+                print(f"Sample of labels: {train_labels[:5]}")
+                
+                # Only calculate AUC if we have valid predictions and labels
+                if len(train_preds) > 0 and len(train_labels) > 0:
+                    train_preds_np = np.array(train_preds)
+                    train_labels_np = np.array(train_labels)
+                    
+                    # Check for NaN or infinite values
+                    if not np.any(np.isnan(train_preds_np)) and not np.any(np.isnan(train_labels_np)):
+                        train_auc = roc_auc_score(train_labels_np, train_preds_np)
+                    else:
+                        train_auc = float('nan')
+                else:
+                    train_auc = float('nan')
+                    
+                if len(val_preds) > 0 and len(val_labels) > 0:
+                    val_preds_np = np.array(val_preds)
+                    val_labels_np = np.array(val_labels)
+                    
+                    if not np.any(np.isnan(val_preds_np)) and not np.any(np.isnan(val_labels_np)):
+                        val_auc = roc_auc_score(val_labels_np, val_preds_np)
+                    else:
+                        val_auc = float('nan')
+                else:
+                    val_auc = float('nan')
+                
+                # Update history
+                history['train_loss'].append(train_loss)
+                history['val_loss'].append(val_loss)
+                history['train_auc'].append(train_auc)
+                history['val_auc'].append(val_auc)
+                                
+                 # Track best model
+                if not np.isnan(val_auc) and val_auc > history['best_val_auc']:
+                    history['best_val_auc'] = val_auc
+                    history['best_epoch'] = epoch
+                
+                # Add scheduler step here, using validation AUC as the metric
+                scheduler.step(val_auc)  # This line was missing
+                # Print progress
+                print(f"Epoch: {epoch+1}/{epochs}")
+                print(f"Train Loss: {train_loss:.4f}, Train AUC: {train_auc:.4f}")
+                print(f"Val Loss: {val_loss:.4f}, Val AUC: {val_auc:.4f}")
+                print(f"Current LR: {optimizer.param_groups[0]['lr']:.6f}")
+                
+            except Exception as e:
+                print(f"Error calculating metrics: {str(e)}")
+                import traceback
+                traceback.print_exc()
+                continue
             
             batches_c.count = 0
-
-            print("Epoch: {}/{}, train loss: {}".format(i+1, epochs, round(loss.item(), 5)))
             epochs_c.update()
-
+        
         epochs_c.count = 0
-        #epochs_c.update()
+        return history
 
+    def print_cv_results(fold_metrics):
+        '''Print cross-validation results with error handling'''
+        try:
+            val_aucs = [m['best_val_auc'] for m in fold_metrics if not np.isnan(m['best_val_auc'])]
+            if val_aucs:  # Only calculate if we have valid AUCs
+                mean_auc = np.mean(val_aucs)
+                std_auc = np.std(val_aucs)
+                
+                print("\nCross-validation Results:")
+                print(f"Mean AUC: {mean_auc:.4f} ± {std_auc:.4f}")
+                for i, metrics in enumerate(fold_metrics):
+                    print(f"Fold {i+1} Best AUC: {metrics['best_val_auc']:.4f} "
+                        f"(Epoch {metrics['best_epoch']+1})")
+            else:
+                print("\nNo valid AUC scores to report")
+                
+        except Exception as e:
+            print(f"Error in print_cv_results: {str(e)}")
+            import traceback
+            traceback.print_exc()
+        
+    try:
+        #manager = enlighten.get_manager()
+        folds_c = _manager.counter(total=5, desc='Fold', unit='folds')
+        epochs_c = _manager.counter(total=epochs, desc='Epochs', unit='epochs')
+        batches_c = _manager.counter(total=75, desc='Batches', unit='batches')
 
-    manager = enlighten.get_manager()
-    folds_c = manager.counter(total=5, desc='Fold', unit='folds')
-    epochs_c = manager.counter(total=epochs, desc='Epochs', unit='epochs')
-    batches_c = manager.counter(total=75, desc='Batches', unit='batches')
-
-    task = ld_helper.get_task()
-    DEVICE = device
-    if (task == Task.NC_v_AD):
-        model_uuid = train_camull(ld_helper=ld_helper, epochs=epochs)
-    else: # sMCI vs pMCI
-        if (model_uuid != None):
-            model = load_model("camull", model_uuid)
-            model_uuid  = train_camull(ld_helper, model=model, epochs=epochs)
-        else:
-            print("Need a model uuid")
-    
-    return model_uuid
+        task = ld_helper.get_task()
+        DEVICE = device
+        
+        if (task == Task.NC_v_AD):
+            model_uuid = train_camull(ld_helper=ld_helper, epochs=epochs)
+        else: # sMCI vs pMCI
+            if (model_uuid != None):
+                model = load_model("camull", model_uuid)
+                model_uuid = train_camull(ld_helper, model=model, epochs=epochs)
+            else:
+                print("Need a model uuid")
+                return None
+        
+        return model_uuid
+        
+    except Exception as e:
+        print(f"Error in start(): {str(e)}")
+        return None
 
 

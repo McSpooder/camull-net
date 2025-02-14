@@ -115,19 +115,34 @@ class LoaderHelper:
 
     
     def get_train_dl(self, fold_ind, shuffle=True):
-
         train_ds = Subset(self.dataset, self.indices[fold_ind][0])
-        train_dl = DataLoader(train_ds, batch_size=4, shuffle=shuffle, num_workers=4, drop_last=True)
-
+        train_dl = DataLoader(
+            train_ds, 
+            batch_size=4, 
+            shuffle=shuffle, 
+            num_workers=4,
+            drop_last=True,
+            multiprocessing_context='spawn',
+            persistent_workers=True
+        )
         return train_dl
 
+    def get_val_dl(self, fold_ind, shuffle=True):
+        val_ds = Subset(self.dataset, self.indices[fold_ind][1])
+        val_dl = DataLoader(
+            val_ds, 
+            batch_size=4, 
+            shuffle=shuffle, 
+            num_workers=4,
+            drop_last=True,
+            multiprocessing_context='spawn',
+            persistent_workers=True
+        )
+        return val_dl
 
+    # Keep the test_dl method for final evaluation
     def get_test_dl(self, fold_ind, shuffle=True):
-
-        test_ds = Subset(self.dataset, self.indices[fold_ind][1])
-        test_dl = DataLoader(test_ds, batch_size=4, shuffle=shuffle, num_workers=4, drop_last=True)
-
-        return test_dl
+        return self.get_val_dl(fold_ind, shuffle)  # Just alias it for now
 
 
 
