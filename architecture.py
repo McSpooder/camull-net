@@ -195,6 +195,7 @@ class ImprovedCamull(nn.Module):
         self.dim_reduction = nn.Sequential(
             nn.Flatten(),
             nn.Linear(self.conv_output_size, 256).float(),
+            nn.BatchNorm1d(256),
             nn.ReLU(),
             nn.Dropout(0.3)
         )
@@ -202,12 +203,15 @@ class ImprovedCamull(nn.Module):
         # Final classification layers
         self.classifier = nn.Sequential(
             nn.Linear(256 + 32, 64).float(),
+            nn.BatchNorm1d(64),
             nn.ReLU(),
             nn.Dropout(0.5),
             nn.Linear(64, 32).float(),
+            nn.BatchNorm1d(32),
             nn.ReLU(),
             nn.Dropout(0.3),
-            nn.Linear(32, 1).float()
+            nn.Linear(32, 1).float(),
+            nn.Tanh()
         )
         for param in self.parameters():
             param.data = param.data.float()
