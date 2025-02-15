@@ -5,6 +5,11 @@ import torch.nn.functional as F
 import numpy as np
 import logging
 
+def safe_std(tensor):
+    """Safely calculate standard deviation for any tensor"""
+    if tensor.numel() > 1:
+        return tensor.std(unbiased=False)
+    return torch.tensor(0.0, device=tensor.device)
 
 class ConvBlock(nn.Module):
     def __init__(self, c_in, c_out, ks, k_stride=1):
@@ -248,6 +253,7 @@ class ImprovedCamull(nn.Module):
         
         self.conv_output_size = x.numel() // x.size(0)
         print(f"Convolution output size: {self.conv_output_size}")
+    
 
     def forward(self, x):
         mri, clinical = x
@@ -273,21 +279,21 @@ class ImprovedCamull(nn.Module):
         logging.info(f"\n{'='*50}")
         logging.info(f"CLINICAL FEATURES")
         logging.info(f"Mean: {clinical_features.mean():.4f}")
-        logging.info(f"Std: {clinical_features.std():.4f}")
+        logging.info(f"Std: {safe_std(clinical_features):.4f}")
         
         # Combined features
         combined = torch.cat([mri_features, clinical_features], dim=1)
         logging.info(f"\n{'='*50}")
         logging.info(f"COMBINED FEATURES")
         logging.info(f"Mean: {combined.mean():.4f}")
-        logging.info(f"Std: {combined.std():.4f}")
+        logging.info(f"Std: {safe_std(combined):.4f}")
         
         # Final classification
         out = self.classifier(combined)
         logging.info(f"\n{'='*50}")
         logging.info(f"FINAL OUTPUT")
         logging.info(f"Mean: {out.mean():.4f}")
-        logging.info(f"Std: {out.std():.4f}")
+        logging.info(f"Std: {safe_std(out):.4f}")
         
         return out
 
