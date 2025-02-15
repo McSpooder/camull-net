@@ -68,16 +68,12 @@ def start(device, ld_helper, epochs, model_uuid=None):
         '''Function for instantiating the pytorch neural network object'''
         net = ImprovedCamull()
         
-        # Convert all parameters to double precision
-        for param in net.parameters():
-            param.data = param.data.double()
-        
         if torch.cuda.device_count() > 1:
             print("Let's use", torch.cuda.device_count(), "GPUs!")
             net = nn.DataParallel(net)
         
         net.to(DEVICE)
-        net.double()
+        net.float()
         
         return net
 
@@ -144,6 +140,9 @@ def start(device, ld_helper, epochs, model_uuid=None):
 
     def train_loop(model, train_dl, val_dl, epochs):
         '''Enhanced training loop with validation and metrics tracking'''
+        # At the start, print model and data types
+        for name, param in model.named_parameters():
+            print(f"Parameter {name}: {param.dtype}")
         # At the start of train_loop
         # Add at the start of your train_loop function
         log_file = open('training_log.txt', 'w')
@@ -168,6 +167,11 @@ def start(device, ld_helper, epochs, model_uuid=None):
         batches_c.total = len(train_dl)
         
         optimizer = optim.Adam(model.parameters(), lr=0.0005, weight_decay=5e-5)
+        # Convert optimizer state to float32
+        for state in optimizer.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.float()
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, mode='max', factor=0.5, patience=5, verbose=True
         )
@@ -240,6 +244,7 @@ def start(device, ld_helper, epochs, model_uuid=None):
                         batch_xb = sample_batched['clin_t'].to(DEVICE)
                         batch_y = sample_batched['label'].to(DEVICE)
                         
+                        model.zero_grad()
                         outputs = model((batch_x, batch_xb))
                         
                         if torch.isnan(outputs).any():

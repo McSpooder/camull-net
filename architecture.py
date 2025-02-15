@@ -12,8 +12,12 @@ class ConvBlock(nn.Module):
         self.conv1 = nn.Conv3d(c_in, c_out, ks, stride=k_stride, padding='same')
         self.bn = nn.BatchNorm3d(c_out)
         self.relu = nn.ReLU()
-        self.pool = nn.MaxPool3d(kernel_size=2, stride=2)  # Changed pooling size
+        self.pool = nn.MaxPool3d(kernel_size=2, stride=2)
         self.dropout = nn.Dropout3d(p=0.1)
+        
+        # Convert all parameters to float32
+        for param in self.parameters():
+            param.data = param.data.float()
 
     def forward(self, x):
         out = self.conv1(x)
@@ -56,14 +60,16 @@ class ConvBlock2(nn.Module):
 
 
 class FCBlock(nn.Module):
-    
     def __init__(self, chan_in, units_out):
-        
         super().__init__()
         self.fc = nn.Linear(chan_in, units_out)
         self.bn = nn.BatchNorm1d(units_out)
         self.elu = nn.ELU()
         self.dropout = nn.Dropout(p=0.1)
+        
+        # Convert all parameters to float32
+        for param in self.parameters():
+            param.data = param.data.float()
 
     def forward(self, x):
         
@@ -166,10 +172,9 @@ class ImprovedCamull(nn.Module):
         
         # MRI processing branch
         self.mri_encoder = nn.ModuleList([
-            # Initial conv with smaller kernel and no stride
-            ConvBlock(1, 32, (3,3,3), k_stride=1),  # Output: 32 x 54 x 54 x 54
-            ConvBlock(32, 64, (3,3,3)),            # Output: 64 x 26 x 26 x 26
-            ConvBlock(64, 96, (3,3,3))             # Output: 96 x 12 x 12 x 12
+            ConvBlock(1, 32, (3,3,3), k_stride=1).float(),
+            ConvBlock(32, 64, (3,3,3)).float(),
+            ConvBlock(64, 96, (3,3,3)).float()
         ])
         
         # Calculate the size after convolutions
@@ -177,32 +182,48 @@ class ImprovedCamull(nn.Module):
         
         # Clinical data processing
         self.clinical_encoder = nn.Sequential(
-            FCBlock(21, 32),
-            FCBlock(32, 32)
+            FCBlock(21, 32).float(),
+            FCBlock(32, 32).float()
         )
         
         # Add a dimension reduction layer before fusion
         self.dim_reduction = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(self.conv_output_size, 256),
-            nn.BatchNorm1d(256),
+            nn.Linear(self.conv_output_size, 256).float(),
             nn.ReLU(),
             nn.Dropout(0.3)
         )
         
         # Final classification layers
         self.classifier = nn.Sequential(
-            nn.Linear(256 + 32, 64),
+            nn.Linear(256 + 32, 64).float(),
             nn.ReLU(),
             nn.Dropout(0.5),
-            nn.Linear(64, 32),
+            nn.Linear(64, 32).float(),
             nn.ReLU(),
             nn.Dropout(0.3),
-            nn.Linear(32, 1)
+            nn.Linear(32, 1).float()
         )
-
+        for param in self.parameters():
+            param.data = param.data.float()
+        self._force_float32()
         self._init_weights()
 
+    def _force_float32(self):
+            def convert_to_float32(module):
+                for child in module.children():
+                    convert_to_float32(child)
+                
+                for param in module._parameters:
+                    if module._parameters[param] is not None:
+                        module._parameters[param] = module._parameters[param].float()
+                
+                for buffer in module._buffers:
+                    if module._buffers[buffer] is not None:
+                        module._buffers[buffer] = module._buffers[buffer].float()
+
+            convert_to_float32(self)
+                
     def log_tensor_stats(self, tensor, name):
         if tensor.numel() > 1:  # Only calculate std if we have more than one element
             logging.info(f"{name} - Mean: {tensor.mean():.4f}, Std: {tensor.std():.4f}")
@@ -211,11 +232,11 @@ class ImprovedCamull(nn.Module):
 
     def _init_weights(self):
         for m in self.modules():
-            if isinstance(m, nn.Linear):
-                nn.init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='relu')
-                m.weight.data *= 0.1  # Scale down weights
+            if isinstance(m, (nn.Conv3d, nn.Linear)):
+                # Initialize with float32
+                m.weight.data = m.weight.data.float()
                 if m.bias is not None:
-                    nn.init.constant_(m.bias, 0)
+                    m.bias.data = m.bias.data.float()
 
     def _calculate_conv_output_size(self):
         # Helper function to calculate output size after convolutions
@@ -317,12 +338,20 @@ class MultiModalAttention(nn.Module):
         return torch.cat([attended_mri, clinical_features], dim=1)
        
 def load_cam_model(path, device):
-    # Create a new model instance
+    # First create a new instance of the model
     model = ImprovedCamull()
+    
     # Load the state dict
-    state_dict = torch.load(path, map_location=device)
-    # If we saved the whole model before, we need to access the state_dict
-    if hasattr(state_dict, 'state_dict'):
-        state_dict = state_dict.state_dict()
+    try:
+        # First try loading with weights_only=True
+        state_dict = torch.load(path, map_location=device, weights_only=True)
+    except:
+        # If that fails, load without weights_only
+        state_dict = torch.load(path, map_location=device)
+        # If we loaded the whole model, get its state dict
+        if hasattr(state_dict, 'state_dict'):
+            state_dict = state_dict.state_dict()
+    
+    # Load the state dict into the model
     model.load_state_dict(state_dict)
     return model

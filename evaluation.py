@@ -24,7 +24,6 @@ tocks     = None
 data_pbar = None
 conn      = None
 
-torch.serialization.add_safe_globals([ImprovedCamull])
 
 def evaluate_model(device_in, uuid, ld_helper, cur):
 

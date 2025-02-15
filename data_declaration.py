@@ -75,14 +75,13 @@ def get_label(path, labels):
     return label
 
 def get_mri(path):
-    '''Gets a numpy array representing the mri object from a file path'''
     mri = nib.load(str(path)).get_fdata()
-    mri = mri.reshape(1, 110, 110, 110)  # Using reshape instead of resize
-    return mri.astype(np.float32)  # Ensure float32 type for consistency
+    mri = mri.reshape(1, 110, 110, 110)
+    return mri.astype(np.float32)  # Changed to float32
 
 def get_clinical(im_id, clin_df):
     '''Gets clinical features vector by searching dataframe for image id'''
-    clinical = np.zeros(21)
+    clinical = np.zeros(21, dtype=np.float32)  # Changed to float32
     
     row = clin_df.loc[clin_df["Image Data ID"] == im_id]
     
@@ -161,10 +160,10 @@ class ToTensor():
             temp_tensor = torch.from_numpy(normalized_mri)
             logging.info(f"3. After numpy->tensor - Mean: {temp_tensor[0][mask].mean():.4f}, Std: {temp_tensor[0][mask].std():.4f}")
         
-        # Convert to tensors
-        mri_t = torch.from_numpy(normalized_mri).double()
-        clin_t = torch.from_numpy(clinical).double()
-        label = torch.from_numpy(label).double()
+        # Convert to tensors with float32 precision
+        mri_t = torch.from_numpy(normalized_mri).float()  # Changed to float()
+        clin_t = torch.from_numpy(clinical).float()      # Changed to float()
+        label = torch.from_numpy(label).float()          # Changed to float()
         
         if torch.rand(1).item() < 0.01:
             logging.info(f"4. Final tensor with double() - Mean: {mri_t[0][mask].mean():.4f}, Std: {mri_t[0][mask].std():.4f}")

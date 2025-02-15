@@ -34,7 +34,7 @@ if not (os.path.exists("../models")):
 #                    format='%(asctime)s - %(message)s',
 #                    force=True)
 
-# Modify logging configuration to use a path in your mounted Google Drive
+#Modify logging configuration to use a path in your mounted Google Drive
 logging.basicConfig(
     filename='/content/drive/MyDrive/model_diagnostics.log',  # Save to Drive
     level=logging.INFO,
