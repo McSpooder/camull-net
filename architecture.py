@@ -203,6 +203,12 @@ class ImprovedCamull(nn.Module):
 
         self._init_weights()
 
+    def log_tensor_stats(self, tensor, name):
+        if tensor.numel() > 1:  # Only calculate std if we have more than one element
+            logging.info(f"{name} - Mean: {tensor.mean():.4f}, Std: {tensor.std():.4f}")
+        else:
+            logging.info(f"{name} - Mean: {tensor.mean():.4f}")
+
     def _init_weights(self):
         for m in self.modules():
             if isinstance(m, nn.Linear):
@@ -229,11 +235,9 @@ class ImprovedCamull(nn.Module):
         mri_features = mri
         for i, encoder in enumerate(self.mri_encoder):
             mri_features = encoder(mri_features)
-            # Log every time (temporary for debugging)
             logging.info(f"\n{'='*50}")
             logging.info(f"NETWORK LAYER STATISTICS - ENCODER {i+1}")
-            logging.info(f"Mean: {mri_features.mean():.4f}")
-            logging.info(f"Std: {mri_features.std():.4f}")
+            self.log_tensor_stats(mri_features, "Values")  # Using the new method
             logging.info(f"Min: {mri_features.min():.4f}")
             logging.info(f"Max: {mri_features.max():.4f}")
         
@@ -241,8 +245,7 @@ class ImprovedCamull(nn.Module):
         mri_features = self.dim_reduction(mri_features)
         logging.info(f"\n{'='*50}")
         logging.info(f"AFTER DIMENSION REDUCTION")
-        logging.info(f"Mean: {mri_features.mean():.4f}")
-        logging.info(f"Std: {mri_features.std():.4f}")
+        self.log_tensor_stats(mri_features, "Values")
         
         # Clinical features
         clinical_features = self.clinical_encoder(clinical)
@@ -313,6 +316,5 @@ class MultiModalAttention(nn.Module):
         attended_mri = (mri_features * weights).view(b, -1)
         return torch.cat([attended_mri, clinical_features], dim=1)
        
-def load_cam_model(path):
-    model = torch.load(path)
-    return model
+def load_cam_model(path, device):
+    return torch.load(path, weights_only=True, map_location=device)

@@ -34,10 +34,10 @@ def start(device, ld_helper, epochs, model_uuid=None):
         if arch == "camull": #must be camull
 
             if model_uuid is None:
-                model = load_cam_model("../weights/camnet/fold_0_weights-2020-04-09_18_29_02")
+                model = load_cam_model("../weights/camnet/fold_0_weights-2020-04-09_18_29_02", device)
             else:
                 paths = glob.glob("../weights/NC_v_AD/{}/*".format(model_uuid))              
-                model = load_cam_model(paths[0])
+                model = load_cam_model(paths[0], device)
 
         return model
 

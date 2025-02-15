@@ -29,10 +29,18 @@ if not (os.path.exists("../models")):
 
 
 
-logging.basicConfig(filename='model_diagnostics.log', 
-                   level=logging.INFO,
-                   format='%(asctime)s - %(message)s',
-                   force=True)
+# logging.basicConfig(filename='model_diagnostics.log', 
+#                    level=logging.INFO,
+#                    format='%(asctime)s - %(message)s',
+#                    force=True)
+
+# Modify logging configuration to use a path in your mounted Google Drive
+logging.basicConfig(
+    filename='/content/drive/MyDrive/model_diagnostics.log',  # Save to Drive
+    level=logging.INFO,
+    format='%(asctime)s - %(message)s',
+    force=True
+)
 
 conn = sqlite3.connect("../weights/neural-network.db")
 cur = conn.cursor()
@@ -148,7 +156,7 @@ def make_an_inference(device, mri=None, clin=None):
                 clin = clin.unsqueeze(0)
                 clin = clin.to(device)
 
-            model = load_cam_model(path)
+            model = load_cam_model(path, device)
             model.eval()
 
             net_out = -1

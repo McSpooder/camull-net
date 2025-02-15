@@ -65,7 +65,7 @@ def get_data_sample():
     return clin2  # Ensure it matches model expectation
 
 
-model = load_cam_model("C:\\Users\\Hextr\\Programming\\alzheimers\\weights\\sMCI_v_pMCI\\5b5732a9904643b5b236cbabe6605dd7\\fold_1_weights-2020-05-05_10_29_43")
+model = load_cam_model("C:\\Users\\Hextr\\Programming\\alzheimers\\weights\\sMCI_v_pMCI\\5b5732a9904643b5b236cbabe6605dd7\\fold_1_weights-2020-05-05_10_29_43", device)
 model.to(device)
 model.eval()
 

@@ -6,6 +6,7 @@ import torch
 
 from   sklearn.metrics   import auc
 import matplotlib.pyplot as plt
+import numpy as np
 
 import sqlite3
 import enlighten
@@ -57,7 +58,7 @@ def evaluate_model(device_in, uuid, ld_helper, cur):
     for path in glob.glob(srch_path):
 
 
-        model   = load_cam_model(path)
+        model   = load_cam_model(path, device)
         model.to(device)
         test_dl = ld_helper.get_test_dl(fold)
         data_pbar.total = len(test_dl)
@@ -113,7 +114,7 @@ def evaluate_fold(device_in, uuid, ld_helper, fold_in, commit_to_db=True):
     srch_path = "../weights/{}/".format(task_str) + uuid + "/*"
     folds_paths = glob.glob(srch_path)
 
-    model   = load_cam_model(folds_paths[fold])
+    model   = load_cam_model(folds_paths[fold], device_in)
     model.to(device)
     test_dl = ld_helper.get_test_dl(fold)
     data_pbar.total = len(test_dl)
@@ -139,31 +140,28 @@ def evaluate_fold(device_in, uuid, ld_helper, fold_in, commit_to_db=True):
 
 
 def get_roc_auc(model_in, test_dl, figure=False, path=None, fold=1):
-    
-    fpr = [] #1-specificity
+    # Use more thresholds for smoother curve
+    thresholds = np.linspace(0, 1, 100)  # 100 points instead of 10
+    fpr = []
     tpr = []
-
-    youden_s_lst = []
-
+    youdens_s_lst = []
+    
     opt_acc = 0; opt_sens = 0; opt_spec = 0
     youdens_s_max = 0
     optimal_thresh = 0
 
-    for t in range(0, 10, 1):
-
-        thresh = t/10
+    for thresh in thresholds:
         acc, sens, spec = get_metrics(model_in, test_dl, thresh)
         tpr.append(sens)
         fpr.append(1 - spec)
 
-
         youdens_s = sens + spec - 1
-
-        if (youdens_s > youdens_s_max): 
-
-            youdens_s_max = youdens_s; 
+        if youdens_s > youdens_s_max:
+            youdens_s_max = youdens_s
             optimal_thresh = thresh
-            opt_acc = acc; opt_sens = sens; opt_spec = spec
+            opt_acc = acc
+            opt_sens = sens
+            opt_spec = spec
 
         tocks.update()
         
@@ -214,7 +212,8 @@ def get_metrics(model_in, test_dl, thresh=0.5, param_count=False):
             batch_Xb = sample_batched['clin_t'].to(device)
             batch_y  = sample_batched['label'].to(device)
             
-            for i in range(4): #hard coded batch size of 4
+            batch_size = batch_X.size(0)
+            for i in range(batch_size):
                 
                 real_class = batch_y[i].item()
                 X = batch_X[i].view(-1, 1, 110, 110, 110)
