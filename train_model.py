@@ -166,7 +166,7 @@ def start(device, ld_helper, epochs, model_uuid=None):
         epochs_c.total = epochs
         batches_c.total = len(train_dl)
         
-        optimizer = optim.Adam(model.parameters(), lr=0.0005, weight_decay=5e-5)
+        optimizer = optim.Adam(model.parameters(), lr=0.0005, weight_decay=1e-5)
         # Convert optimizer state to float32
         for state in optimizer.state.values():
             for k, v in state.items():
@@ -175,7 +175,8 @@ def start(device, ld_helper, epochs, model_uuid=None):
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, mode='max', factor=0.5, patience=5, verbose=True
         )
-        loss_function = nn.BCEWithLogitsLoss()
+        pos_weight = torch.tensor([train_label_dist[1] / train_label_dist[0]]).to(DEVICE)
+        loss_function = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
         history = {
             'train_loss': [], 'val_loss': [],

@@ -210,8 +210,7 @@ class ImprovedCamull(nn.Module):
             nn.BatchNorm1d(32),
             nn.ReLU(),
             nn.Dropout(0.3),
-            nn.Linear(32, 1).float(),
-            nn.Tanh()
+            nn.Linear(32, 1).float()
         )
         for param in self.parameters():
             param.data = param.data.float()
