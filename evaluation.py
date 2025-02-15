@@ -1,8 +1,10 @@
 from sqlite3.dbapi2 import Cursor, connect
 
 from sklearn import metrics
-from   architecture     import load_cam_model
+from   architecture     import load_cam_model, ImprovedCamull
 import torch
+
+import torch.serialization
 
 from   sklearn.metrics   import auc
 import matplotlib.pyplot as plt
@@ -21,6 +23,8 @@ ticks     = None
 tocks     = None
 data_pbar = None
 conn      = None
+
+torch.serialization.add_safe_globals([ImprovedCamull])
 
 def evaluate_model(device_in, uuid, ld_helper, cur):
 
