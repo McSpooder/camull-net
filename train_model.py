@@ -6,6 +6,7 @@ from architecture     import load_cam_model, Camull, ImprovedCamull
 import torch
 import torch.nn    as nn
 import torch.optim as optim
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from collections import Counter
 
@@ -26,6 +27,24 @@ _manager = enlighten.get_manager()  # Single manager instance
 
 DEVICE = None
 
+class EarlyStopping:
+    def __init__(self, patience=5, min_delta=0.0001):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.counter = 0
+        self.best_val_auc = None
+        self.early_stop = False
+
+    def __call__(self, val_auc):
+        if self.best_val_auc is None:
+            self.best_val_auc = val_auc
+        elif val_auc < self.best_val_auc + self.min_delta:
+            self.counter += 1
+            if self.counter >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_val_auc = val_auc
+            self.counter = 0
 
 def start(device, ld_helper, epochs, model_uuid=None):
         
@@ -138,203 +157,192 @@ def start(device, ld_helper, epochs, model_uuid=None):
         folds_c.count = 0
         return uuid_
 
-    def train_loop(model, train_dl, val_dl, epochs):
-        '''Enhanced training loop with validation and metrics tracking'''
-        # At the start, print model and data types
-        for name, param in model.named_parameters():
-            print(f"Parameter {name}: {param.dtype}")
-        # At the start of train_loop
-        # Add at the start of your train_loop function
+    def setup_training(model, train_dl, epochs):
+        """Initialize training components"""
+        # Setup logging
         log_file = open('training_log.txt', 'w')
-            # Then modify your print statements to also write to the file
-        def log_print(message, console=True):
-            """Log message to file and optionally to console"""
-            log_file.write(message + '\n')
-            log_file.flush()  # Ensure it's written immediately
-            if console:
-                print(message)
-
-        train_label_dist = Counter([l.item() for batch in train_dl for l in batch['label']])
-        val_label_dist = Counter([l.item() for batch in val_dl for l in batch['label']])
-
-        for batch in train_dl:
-            # Debug first batch
-            print("\nBatch structure:")
-            for k, v in batch.items():
-                print(f"{k}: {v.dtype}, shape: {v.shape}")
-            break
+        
+        # Setup data counters
         epochs_c.total = epochs
         batches_c.total = len(train_dl)
         
-        optimizer = optim.Adam(model.parameters(), lr=0.0005, weight_decay=1e-5)
-        # Convert optimizer state to float32
-        for state in optimizer.state.values():
-            for k, v in state.items():
-                if isinstance(v, torch.Tensor):
-                    state[k] = v.float()
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(
-            optimizer, mode='max', factor=0.5, patience=5, verbose=True
-        )
+        # Calculate class weights
+        train_label_dist = Counter([l.item() for batch in train_dl for l in batch['label']])
         pos_weight = torch.tensor([train_label_dist[1] / train_label_dist[0]]).to(DEVICE)
+        
+        # Setup optimizer and loss
+        optimizer = setup_optimizer(model)
         loss_function = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+        
+        return log_file, optimizer, loss_function
 
-        history = {
+    def initialize_history():
+        """Initialize dictionary to track training history"""
+        return {
             'train_loss': [], 'val_loss': [],
             'train_auc': [], 'val_auc': [],
             'best_val_auc': 0,
             'best_epoch': 0
         }
+
+    def setup_optimizer(model):
+        """Setup optimizer with proper settings"""
+        optimizer = optim.Adam(model.parameters(), lr=0.0005, weight_decay=1e-4)
+        for state in optimizer.state.values():
+            for k, v in state.items():
+                if isinstance(v, torch.Tensor):
+                    state[k] = v.float()
+        return optimizer
+    
+    def update_metrics(history, train_losses, train_preds, train_labels, 
+                  val_losses, val_preds, val_labels):
+        """Calculate and update metrics for both training and validation"""
+        metrics = {}
+        
+        # Calculate training metrics
+        if train_losses:
+            metrics['train_loss'] = np.mean(train_losses)
+            if len(train_preds) > 0 and len(train_labels) > 0:
+                train_preds_np = np.array(train_preds)
+                train_labels_np = np.array(train_labels)
+                if not np.any(np.isnan(train_preds_np)) and not np.any(np.isnan(train_labels_np)):
+                    metrics['train_auc'] = roc_auc_score(train_labels_np, train_preds_np)
+                else:
+                    metrics['train_auc'] = float('nan')
+        else:
+            metrics['train_loss'] = float('nan')
+            metrics['train_auc'] = float('nan')
+        
+        # Calculate validation metrics
+        if val_losses:
+            metrics['val_loss'] = np.mean(val_losses)
+            if len(val_preds) > 0 and len(val_labels) > 0:
+                val_preds_np = np.array(val_preds)
+                val_labels_np = np.array(val_labels)
+                if not np.any(np.isnan(val_preds_np)) and not np.any(np.isnan(val_labels_np)):
+                    metrics['val_auc'] = roc_auc_score(val_labels_np, val_preds_np)
+                else:
+                    metrics['val_auc'] = float('nan')
+        else:
+            metrics['val_loss'] = float('nan')
+            metrics['val_auc'] = float('nan')
+        
+        # Update history
+        for key in ['train_loss', 'val_loss', 'train_auc', 'val_auc']:
+            history[key].append(metrics[key])
+        
+        # Print metrics
+        print(f"Train Loss: {metrics['train_loss']:.4f}, Train AUC: {metrics['train_auc']:.4f}")
+        print(f"Val Loss: {metrics['val_loss']:.4f}, Val AUC: {metrics['val_auc']:.4f}")
+        
+        return metrics
+    
+    def save_checkpoint(model, metrics, epoch, history, fold):
+        """Save model checkpoint if it's the best so far"""
+        if metrics['val_auc'] > history['best_val_auc']:
+            history['best_val_auc'] = metrics['val_auc']
+            history['best_epoch'] = epoch
+            torch.save(model.state_dict(), f'best_model_fold_{fold}.pth')
+        
+        # Save regular checkpoint every 5 epochs
+        if (epoch + 1) % 5 == 0:
+            torch.save(model.state_dict(), f'model_checkpoint_epoch_{epoch+1}.pth')
+    
+    def train_epoch(model, train_dl, optimizer, loss_function, epoch):
+        """Run one epoch of training"""
+        model.train()
+        train_losses, train_preds, train_labels = [], [], []
+        
+        for batch_idx, sample_batched in enumerate(train_dl):
+            try:
+                loss, outputs, batch_y = process_batch(
+                    model, sample_batched, loss_function, optimizer, is_training=True
+                )
+                train_losses.append(loss.item())
+                train_preds.extend(outputs.detach().cpu().numpy())
+                train_labels.extend(batch_y.cpu().numpy())
+                batches_c.update()
+            except Exception as e:
+                print(f"Error in training batch {batch_idx}: {str(e)}")
+                continue
+                
+        return train_losses, train_preds, train_labels
+    
+    def validate(model, val_dl, loss_function):
+        """Run validation"""
+        model.eval()
+        val_losses, val_preds, val_labels = [], [], []
+        
+        with torch.no_grad():
+            for batch_idx, sample_batched in enumerate(val_dl):
+                try:
+                    loss, outputs, batch_y = process_batch(
+                        model, sample_batched, loss_function, None, is_training=False
+                    )
+                    val_losses.append(loss.item())
+                    val_preds.extend(outputs.cpu().numpy())
+                    val_labels.extend(batch_y.cpu().numpy())
+                except Exception as e:
+                    print(f"Error in validation batch {batch_idx}: {str(e)}")
+                    continue
+                    
+        return val_losses, val_preds, val_labels
+    
+    def process_batch(model, batch, loss_function, optimizer=None, is_training=True):
+        """Process a single batch"""
+        batch_x = batch['mri'].to(DEVICE)
+        batch_xb = batch['clin_t'].to(DEVICE)
+        batch_y = batch['label'].to(DEVICE)
+        
+        if is_training:
+            model.zero_grad()
+        
+        outputs = model((batch_x, batch_xb))
+        loss = loss_function(outputs, batch_y)
+        
+        if is_training and optimizer is not None:
+            loss.backward()
+            optimizer.step()
+        
+        return loss, outputs, batch_y
+
+    def train_loop(model, train_dl, val_dl, epochs=40):
+        """Main training loop"""
+        log_file, optimizer, loss_function = setup_training(model, train_dl, epochs)
+        scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=3, verbose=True)
+        early_stopping = EarlyStopping(patience=5)
+        history = initialize_history()
         
         for epoch in range(epochs):
-            log_print(f"\nEpoch: {epoch+1}/{epochs}")
-            # Training phase
-            model.train()
-            train_losses = []
-            train_preds = []
-            train_labels = []
+            print(f"\nEpoch: {epoch+1}/{epochs}")
             
-            for batch_idx, sample_batched in enumerate(train_dl):
-                try:
-                    batch_x = sample_batched['mri'].to(DEVICE)
-                    batch_xb = sample_batched['clin_t'].to(DEVICE)
-                    batch_y = sample_batched['label'].to(DEVICE)
-                    
-                    # Forward pass
-                    model.zero_grad()
-                    outputs = model((batch_x, batch_xb))
-
-                    if batch_idx == 0:
-                        probs = torch.sigmoid(outputs)
-                        log_print("\nFirst batch predictions:", console=False)  # Log to file only
-                        log_print(f"Probability range: [{probs.min().item():.4f}, {probs.max().item():.4f}]", console=False)
-                        for i in range(min(4, len(outputs))):
-                            log_print(f"Sample {i}: Prob = {probs[i].item():.4f}, Label = {batch_y[i].item()}", console=False)
-
-                    # Check for NaN values
-                    if torch.isnan(outputs).any():
-                        print(f"NaN detected in outputs at epoch {epoch}, batch {batch_idx}")
-                        continue
-                    
-                    loss = loss_function(outputs, batch_y)
-                    
-                    # Backward pass
-                    loss.backward()
-                    optimizer.step()
-                    
-                    # Track metrics
-                    train_losses.append(loss.item())
-                    train_preds.extend(outputs.detach().cpu().numpy())
-                    train_labels.extend(batch_y.cpu().numpy())
-                    
-                    batches_c.update()
-                    
-                except Exception as e:
-                    print(f"Error in training batch {batch_idx}: {str(e)}")
-                    continue
+            # Training phase
+            train_losses, train_preds, train_labels = train_epoch(
+                model, train_dl, optimizer, loss_function, epoch
+            )
             
             # Validation phase
-            model.eval()
-            val_losses = []
-            val_preds = []
-            val_labels = []
+            val_losses, val_preds, val_labels = validate(model, val_dl, loss_function)
             
-            with torch.no_grad():
-                for batch_idx, sample_batched in enumerate(val_dl):
-                    try:
-                        batch_x = sample_batched['mri'].to(DEVICE)
-                        batch_xb = sample_batched['clin_t'].to(DEVICE)
-                        batch_y = sample_batched['label'].to(DEVICE)
-                        
-                        model.zero_grad()
-                        outputs = model((batch_x, batch_xb))
-                        
-                        if torch.isnan(outputs).any():
-                            print(f"NaN detected in validation outputs at epoch {epoch}, batch {batch_idx}")
-                            continue
-                            
-                        loss = loss_function(outputs, batch_y)
-                        
-                        val_losses.append(loss.item())
-                        val_preds.extend(outputs.cpu().numpy())
-                        val_labels.extend(batch_y.cpu().numpy())
-                        
-                    except Exception as e:
-                        print(f"Error in validation batch {batch_idx}: {str(e)}")
-                        continue
+            # Update metrics and check early stopping
+            metrics = update_metrics(
+                history, train_losses, train_preds, train_labels,
+                val_losses, val_preds, val_labels
+            )
             
-            try:
-                # Calculate epoch metrics
-                if train_losses:
-                    train_loss = np.mean(train_losses)
-                else:
-                    train_loss = float('nan')
-                    
-                if val_losses:
-                    val_loss = np.mean(val_losses)
-                else:
-                    val_loss = float('nan')
-                
-                # Print raw values for debugging
-                print(f"Train predictions shape: {np.array(train_preds).shape}")
-                print(f"Train labels shape: {np.array(train_labels).shape}")
-                print(f"Sample of predictions: {train_preds[:5]}")
-                print(f"Sample of labels: {train_labels[:5]}")
-                
-                # Only calculate AUC if we have valid predictions and labels
-                if len(train_preds) > 0 and len(train_labels) > 0:
-                    train_preds_np = np.array(train_preds)
-                    train_labels_np = np.array(train_labels)
-                    
-                    # Check for NaN or infinite values
-                    if not np.any(np.isnan(train_preds_np)) and not np.any(np.isnan(train_labels_np)):
-                        train_auc = roc_auc_score(train_labels_np, train_preds_np)
-                    else:
-                        train_auc = float('nan')
-                else:
-                    train_auc = float('nan')
-                    
-                if len(val_preds) > 0 and len(val_labels) > 0:
-                    val_preds_np = np.array(val_preds)
-                    val_labels_np = np.array(val_labels)
-                    
-                    if not np.any(np.isnan(val_preds_np)) and not np.any(np.isnan(val_labels_np)):
-                        val_auc = roc_auc_score(val_labels_np, val_preds_np)
-                    else:
-                        val_auc = float('nan')
-                else:
-                    val_auc = float('nan')
-                
-                # Update history
-                history['train_loss'].append(train_loss)
-                history['val_loss'].append(val_loss)
-                history['train_auc'].append(train_auc)
-                history['val_auc'].append(val_auc)
-                                
-                 # Track best model
-                if not np.isnan(val_auc) and val_auc > history['best_val_auc']:
-                    history['best_val_auc'] = val_auc
-                    history['best_epoch'] = epoch
-                
-                # Add scheduler step here, using validation AUC as the metric
-                scheduler.step(val_auc)  # This line was missing
-                # End of epoch metrics - show these in both console and file
-                log_print(f"Train Loss: {train_loss:.4f}, Train AUC: {train_auc:.4f}")
-                log_print(f"Val Loss: {val_loss:.4f}, Val AUC: {val_auc:.4f}")
-                log_print(f"Current LR: {optimizer.param_groups[0]['lr']:.6f}")
-
-                if (epoch + 1) % 5 == 0:
-                    torch.save(model.state_dict(), f'model_checkpoint_epoch_{epoch+1}.pth')
-                
-            except Exception as e:
-                print(f"Error calculating metrics: {str(e)}")
-                import traceback
-                traceback.print_exc()
-                continue
+            early_stopping(metrics['val_auc'])
+            if early_stopping.early_stop:
+                print(f"Early stopping triggered at epoch {epoch+1}")
+                break
             
+            # Save best model and update scheduler
+            save_checkpoint(model, metrics, epoch, history, folds_c.count)
+            scheduler.step(metrics['val_auc'])
+            
+            # Reset batch counter
             batches_c.count = 0
             epochs_c.update()
-
-
+        
         log_file.close()
         epochs_c.count = 0
         return history

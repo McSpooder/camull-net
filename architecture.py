@@ -12,13 +12,13 @@ def safe_std(tensor):
     return torch.tensor(0.0, device=tensor.device)
 
 class ConvBlock(nn.Module):
-    def __init__(self, c_in, c_out, ks, k_stride=1):
+    def __init__(self, c_in, c_out, ks, k_stride=1, dropout=0.1):  # Added dropout parameter
         super().__init__()
         self.conv1 = nn.Conv3d(c_in, c_out, ks, stride=k_stride, padding='same')
         self.bn = nn.BatchNorm3d(c_out)
         self.relu = nn.ReLU()
         self.pool = nn.MaxPool3d(kernel_size=2, stride=2)
-        self.dropout = nn.Dropout3d(p=0.1)
+        self.dropout = nn.Dropout3d(p=dropout)  # Use the passed dropout value
         
         # Convert all parameters to float32
         for param in self.parameters():
@@ -169,7 +169,7 @@ class Camull(nn.Module):
         return out
 
 class ImprovedCamull(nn.Module):
-    def __init__(self):
+    def __init__(self, dropout_rate=0.3):
         super().__init__()
         
         # Calculate the feature size after convolutions
@@ -177,9 +177,9 @@ class ImprovedCamull(nn.Module):
         
         # MRI processing branch
         self.mri_encoder = nn.ModuleList([
-            ConvBlock(1, 32, (3,3,3), k_stride=1).float(),
-            ConvBlock(32, 64, (3,3,3)).float(),
-            ConvBlock(64, 96, (3,3,3)).float()
+            ConvBlock(1, 32, (3,3,3), k_stride=1, dropout=dropout_rate),
+            ConvBlock(32, 64, (3,3,3), dropout=dropout_rate),
+            ConvBlock(64, 96, (3,3,3), dropout=dropout_rate)
         ])
         
         # Calculate the size after convolutions
@@ -194,23 +194,27 @@ class ImprovedCamull(nn.Module):
         # Add a dimension reduction layer before fusion
         self.dim_reduction = nn.Sequential(
             nn.Flatten(),
-            nn.Linear(self.conv_output_size, 256).float(),
+            nn.Linear(self.conv_output_size, 256),
             nn.BatchNorm1d(256),
             nn.ReLU(),
-            nn.Dropout(0.3)
+            nn.Dropout(dropout_rate),
+            nn.Linear(256, 256),  # Additional layer with regularization
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.Dropout(dropout_rate)
         )
         
-        # Final classification layers
+        # More aggressive regularization in classifier
         self.classifier = nn.Sequential(
-            nn.Linear(256 + 32, 64).float(),
+            nn.Linear(256 + 32, 64),
             nn.BatchNorm1d(64),
             nn.ReLU(),
-            nn.Dropout(0.5),
-            nn.Linear(64, 32).float(),
+            nn.Dropout(dropout_rate + 0.1),  # Higher dropout
+            nn.Linear(64, 32),
             nn.BatchNorm1d(32),
             nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(32, 1).float()
+            nn.Dropout(dropout_rate + 0.1),
+            nn.Linear(32, 1)
         )
         for param in self.parameters():
             param.data = param.data.float()
