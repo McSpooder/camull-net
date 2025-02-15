@@ -130,16 +130,9 @@ class MRIDataset(Dataset):
             label = get_label(path, self.labels)
 
             sample = {'mri': mri, 'clinical':clinical, 'label':label}
-            
-            # Debug print before transform
-            print("Before transform:", sample.keys())
 
             if self.transform:
                 sample = self.transform(sample)
-                # Debug print
-                print("\nTransformed sample types:")
-                for k, v in sample.items():
-                    print(f"{k}: {v.dtype}, shape: {v.shape}")
 
             return sample
 

@@ -148,16 +148,16 @@ def start(device, ld_helper, epochs, model_uuid=None):
         # Add at the start of your train_loop function
         log_file = open('training_log.txt', 'w')
             # Then modify your print statements to also write to the file
-        def log_print(message):
-            print(message)
+        def log_print(message, console=True):
+            """Log message to file and optionally to console"""
             log_file.write(message + '\n')
-            log_file.flush()  # Make sure it's written immediately
+            log_file.flush()  # Ensure it's written immediately
+            if console:
+                print(message)
 
         train_label_dist = Counter([l.item() for batch in train_dl for l in batch['label']])
         val_label_dist = Counter([l.item() for batch in val_dl for l in batch['label']])
-        print("\nClass distribution:")
-        print(f"Training set: {dict(train_label_dist)}")
-        print(f"Validation set: {dict(val_label_dist)}")
+
         for batch in train_dl:
             # Debug first batch
             print("\nBatch structure:")
@@ -171,19 +171,7 @@ def start(device, ld_helper, epochs, model_uuid=None):
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, mode='max', factor=0.5, patience=5, verbose=True
         )
-        n_samples = len(train_dl.dataset)
-        n_classes = 2  # NC and AD
-        
-        # Calculate class weights
-        train_label_dist = Counter([l.item() for batch in train_dl for l in batch['label']])
-        class_counts = torch.tensor([train_label_dist[0], train_label_dist[1]], dtype=torch.float64)
-        class_weights = n_samples / (n_classes * class_counts)
-        class_weights = class_weights / class_weights.sum()  # Normalize weights
-        print(f"\nClass weights: {class_weights}")
-
-        # Create weighted loss function
-        pos_weight = (class_weights[1] / class_weights[0]).to(DEVICE)
-        loss_function = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+        loss_function = nn.BCEWithLogitsLoss()
 
         history = {
             'train_loss': [], 'val_loss': [],
@@ -193,6 +181,7 @@ def start(device, ld_helper, epochs, model_uuid=None):
         }
         
         for epoch in range(epochs):
+            log_print(f"\nEpoch: {epoch+1}/{epochs}")
             # Training phase
             model.train()
             train_losses = []
@@ -205,31 +194,17 @@ def start(device, ld_helper, epochs, model_uuid=None):
                     batch_xb = sample_batched['clin_t'].to(DEVICE)
                     batch_y = sample_batched['label'].to(DEVICE)
                     
-                    # Add this debug print in train_loop right after loading the batch
-                    print("\nBatch dimensions:")
-                    print(f"MRI batch: {batch_x.shape}")  # Should be [batch_size, 1, 110, 110, 110]
-                    print(f"Clinical batch: {batch_xb.shape}")  # Should be [batch_size, 21]
-                    print(f"Label batch: {batch_y.shape}")  # Should be [batch_size, 1]
                     # Forward pass
                     model.zero_grad()
                     outputs = model((batch_x, batch_xb))
 
-                    # In your training loop debug section
-                    if epoch == 0 and batch_idx == 0:
-                        print("\nFirst forward pass results:")
-                        print(f"Output shape: {outputs.shape}")
-                        print(f"Raw logits range: [{outputs.min().item():.4f}, {outputs.max().item():.4f}]")
-                        
-                        # Convert logits to probabilities
+                    if batch_idx == 0:
                         probs = torch.sigmoid(outputs)
-                        print(f"Probability range: [{probs.min().item():.4f}, {probs.max().item():.4f}]")
-                        print("\nBatch details:")
-                        for i in range(len(outputs)):
-                            print(f"Sample {i}:")
-                            print(f"  Logit: {outputs[i].item():.4f}")
-                            print(f"  Probability: {probs[i].item():.4f}")
-                            print(f"  True Label: {batch_y[i].item()}")
-                            
+                        log_print("\nFirst batch predictions:", console=False)  # Log to file only
+                        log_print(f"Probability range: [{probs.min().item():.4f}, {probs.max().item():.4f}]", console=False)
+                        for i in range(min(4, len(outputs))):
+                            log_print(f"Sample {i}: Prob = {probs[i].item():.4f}, Label = {batch_y[i].item()}", console=False)
+
                     # Check for NaN values
                     if torch.isnan(outputs).any():
                         print(f"NaN detected in outputs at epoch {epoch}, batch {batch_idx}")
@@ -336,8 +311,7 @@ def start(device, ld_helper, epochs, model_uuid=None):
                 
                 # Add scheduler step here, using validation AUC as the metric
                 scheduler.step(val_auc)  # This line was missing
-                # Print progress
-                log_print(f"Epoch: {epoch+1}/{epochs}")
+                # End of epoch metrics - show these in both console and file
                 log_print(f"Train Loss: {train_loss:.4f}, Train AUC: {train_auc:.4f}")
                 log_print(f"Val Loss: {val_loss:.4f}, Val AUC: {val_auc:.4f}")
                 log_print(f"Current LR: {optimizer.param_groups[0]['lr']:.6f}")
@@ -350,7 +324,8 @@ def start(device, ld_helper, epochs, model_uuid=None):
             
             batches_c.count = 0
             epochs_c.update()
-        
+
+        log_file.close()
         epochs_c.count = 0
         return history
 

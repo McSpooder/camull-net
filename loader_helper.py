@@ -27,7 +27,6 @@ class LoaderHelper:
                 transform=transforms.Compose([
                 ToTensor()
             ]))
-        print("Sample dataset item:", self.dataset[0])
         self.indices = []
         self.set_indices()
 
@@ -90,7 +89,7 @@ class LoaderHelper:
         for label, count in val_class_counts.items():
             class_name = self.labels[int(label)]
             print(f"Class {class_name}: {count} samples ({count/len(val_indices)*100:.2f}%)")
-            
+
     def get_task(self):
         '''gets task'''
         return self.task
