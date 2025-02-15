@@ -9,7 +9,7 @@ import pandas as pd
 
 import torch
 from torch.utils.data import Dataset
-
+import logging
 
 class Task(Enum):
     '''
@@ -145,17 +145,29 @@ class ToTensor():
     def __call__(self, sample):
         image, clinical, label = sample['mri'], sample['clinical'], sample['label']
         
-        # Proper MRI normalization using z-score for non-zero voxels
-        mask = image != 0
-        mean = image[mask].mean()
-        std = image[mask].std()
-        normalized_mri = np.zeros_like(image, dtype=np.float64)  # Changed to float64
-        normalized_mri[mask] = (image[mask] - mean) / (std + 1e-10)
+        # Initial normalization
+        mask = image[0] != 0  # Only take the first channel for mask
+        mean = image[0][mask].mean()
+        std = image[0][mask].std()
+        normalized_mri = np.zeros_like(image, dtype=np.float64)
+        normalized_mri[0][mask] = (image[0][mask] - mean) / (std + 1e-10)
         
-        # Convert to tensors with double precision
-        mri_t = torch.from_numpy(normalized_mri).double()  # Explicitly convert to double
-        clin_t = torch.from_numpy(clinical).double()  # Explicitly convert to double
+        if torch.rand(1).item() < 0.01:
+            logging.info("\nDetailed Normalization Flow:")
+            logging.info(f"1. Raw MRI - Mean: {mean:.4f}, Std: {std:.4f}")
+            logging.info(f"2. After normalization (numpy) - Mean: {normalized_mri[0][mask].mean():.4f}, Std: {normalized_mri[0][mask].std():.4f}")
+            
+            # Convert to tensor and log intermediate state
+            temp_tensor = torch.from_numpy(normalized_mri)
+            logging.info(f"3. After numpy->tensor - Mean: {temp_tensor[0][mask].mean():.4f}, Std: {temp_tensor[0][mask].std():.4f}")
+        
+        # Convert to tensors
+        mri_t = torch.from_numpy(normalized_mri).double()
+        clin_t = torch.from_numpy(clinical).double()
         label = torch.from_numpy(label).double()
+        
+        if torch.rand(1).item() < 0.01:
+            logging.info(f"4. Final tensor with double() - Mean: {mri_t[0][mask].mean():.4f}, Std: {mri_t[0][mask].std():.4f}")
         
         return {
             'mri': mri_t,

@@ -26,6 +26,7 @@ _manager = enlighten.get_manager()  # Single manager instance
 
 DEVICE = None
 
+
 def start(device, ld_helper, epochs, model_uuid=None):
         
     def load_model(arch, model_uuid=None):
@@ -167,7 +168,7 @@ def start(device, ld_helper, epochs, model_uuid=None):
         epochs_c.total = epochs
         batches_c.total = len(train_dl)
         
-        optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=5e-5)
+        optimizer = optim.Adam(model.parameters(), lr=0.0005, weight_decay=5e-5)
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, mode='max', factor=0.5, patience=5, verbose=True
         )

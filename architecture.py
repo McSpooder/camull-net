@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import numpy as np
-
+import logging
 
 
 class ConvBlock(nn.Module):
@@ -185,6 +185,7 @@ class ImprovedCamull(nn.Module):
         self.dim_reduction = nn.Sequential(
             nn.Flatten(),
             nn.Linear(self.conv_output_size, 256),
+            nn.BatchNorm1d(256),
             nn.ReLU(),
             nn.Dropout(0.3)
         )
@@ -200,6 +201,16 @@ class ImprovedCamull(nn.Module):
             nn.Linear(32, 1)
         )
 
+        self._init_weights()
+
+    def _init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='relu')
+                m.weight.data *= 0.1  # Scale down weights
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
+
     def _calculate_conv_output_size(self):
         # Helper function to calculate output size after convolutions
         x = torch.zeros(1, 1, *self.input_shape)
@@ -214,22 +225,45 @@ class ImprovedCamull(nn.Module):
     def forward(self, x):
         mri, clinical = x
         
-        # Process MRI data
+        # Process MRI data through encoders
         mri_features = mri
-        for encoder in self.mri_encoder:
+        for i, encoder in enumerate(self.mri_encoder):
             mri_features = encoder(mri_features)
+            # Log every time (temporary for debugging)
+            logging.info(f"\n{'='*50}")
+            logging.info(f"NETWORK LAYER STATISTICS - ENCODER {i+1}")
+            logging.info(f"Mean: {mri_features.mean():.4f}")
+            logging.info(f"Std: {mri_features.std():.4f}")
+            logging.info(f"Min: {mri_features.min():.4f}")
+            logging.info(f"Max: {mri_features.max():.4f}")
         
-        # Reduce MRI feature dimensions
+        # After dimension reduction
         mri_features = self.dim_reduction(mri_features)
+        logging.info(f"\n{'='*50}")
+        logging.info(f"AFTER DIMENSION REDUCTION")
+        logging.info(f"Mean: {mri_features.mean():.4f}")
+        logging.info(f"Std: {mri_features.std():.4f}")
         
-        # Process clinical data
+        # Clinical features
         clinical_features = self.clinical_encoder(clinical)
+        logging.info(f"\n{'='*50}")
+        logging.info(f"CLINICAL FEATURES")
+        logging.info(f"Mean: {clinical_features.mean():.4f}")
+        logging.info(f"Std: {clinical_features.std():.4f}")
         
-        # Concatenate features
+        # Combined features
         combined = torch.cat([mri_features, clinical_features], dim=1)
+        logging.info(f"\n{'='*50}")
+        logging.info(f"COMBINED FEATURES")
+        logging.info(f"Mean: {combined.mean():.4f}")
+        logging.info(f"Std: {combined.std():.4f}")
         
         # Final classification
         out = self.classifier(combined)
+        logging.info(f"\n{'='*50}")
+        logging.info(f"FINAL OUTPUT")
+        logging.info(f"Mean: {out.mean():.4f}")
+        logging.info(f"Std: {out.std():.4f}")
         
         return out
 

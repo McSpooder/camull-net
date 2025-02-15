@@ -8,6 +8,7 @@ from data_declaration     import get_mri
 from data_standardisation import convert_to_np
 
 import torch
+import logging
 
 import sqlite3
 import os
@@ -28,6 +29,10 @@ if not (os.path.exists("../models")):
 
 
 
+logging.basicConfig(filename='model_diagnostics.log', 
+                   level=logging.INFO,
+                   format='%(asctime)s - %(message)s',
+                   force=True)
 
 conn = sqlite3.connect("../weights/neural-network.db")
 cur = conn.cursor()
