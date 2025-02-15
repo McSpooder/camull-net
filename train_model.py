@@ -141,7 +141,7 @@ def start(device, ld_helper, epochs, model_uuid=None):
         print_cv_results(fold_metrics)
         
         folds_c.count = 0
-        return uuid
+        return uuid_
 
     def train_loop(model, train_dl, val_dl, epochs):
         '''Enhanced training loop with validation and metrics tracking'''
