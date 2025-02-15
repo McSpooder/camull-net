@@ -43,25 +43,24 @@ def start(device, ld_helper, epochs, model_uuid=None):
 
     def save_weights(model_in, uuid_arg, fold=1, task: Task = None):
         '''The following function saves the weights file into required folder'''
-
         if sys.platform.__str__() == 'linux':
-            root_path = "../weights/" + task.__str__() + "/"     + uuid_arg + "/"
+            root_path = "../weights/" + task.__str__() + "/" + uuid_arg + "/"
         else: #windows
-            root_path = "..\\weights\\" + task.__str__() + "\\"     + uuid_arg + "\\"
+            root_path = "..\\weights\\" + task.__str__() + "\\" + uuid_arg + "\\"
 
-
-        if fold == 1: os.makedirs(root_path, exist_ok=True)
-
+        if fold == 1: 
+            os.makedirs(root_path, exist_ok=True)
 
         while True:
-
-            s_path = root_path + "fold_{}_weights-{date:%Y-%m-%d_%H-%M-%S}.pt".format(fold, date=datetime.datetime.now()) # pylint: disable=line-too-long
+            s_path = root_path + "fold_{}_weights-{date:%Y-%m-%d_%H-%M-%S}.pt".format(
+                fold, date=datetime.datetime.now()
+            )
 
             if os.path.exists(s_path):
                 print("Path exists. Choosing another path.")
             else:
-                #check if the directory exists
-                torch.save(model_in, s_path)
+                # Save only the state dict instead of the whole model
+                torch.save(model_in.state_dict(), s_path)
                 break
 
 

@@ -317,4 +317,12 @@ class MultiModalAttention(nn.Module):
         return torch.cat([attended_mri, clinical_features], dim=1)
        
 def load_cam_model(path, device):
-    return torch.load(path, weights_only=True, map_location=device)
+    # Create a new model instance
+    model = ImprovedCamull()
+    # Load the state dict
+    state_dict = torch.load(path, map_location=device)
+    # If we saved the whole model before, we need to access the state_dict
+    if hasattr(state_dict, 'state_dict'):
+        state_dict = state_dict.state_dict()
+    model.load_state_dict(state_dict)
+    return model
