@@ -214,14 +214,22 @@ def start(device, ld_helper, epochs, model_uuid=None):
                     model.zero_grad()
                     outputs = model((batch_x, batch_xb))
 
-                    # Add this debug block for the first batch of the first epoch
+                    # In your training loop debug section
                     if epoch == 0 and batch_idx == 0:
                         print("\nFirst forward pass results:")
                         print(f"Output shape: {outputs.shape}")
-                        print(f"Output range: [{outputs.min().item():.4f}, {outputs.max().item():.4f}]")
-                        print(f"Batch predictions: {outputs.detach().cpu().numpy()}")
-                        print(f"Batch labels: {batch_y.cpu().numpy()}")
-
+                        print(f"Raw logits range: [{outputs.min().item():.4f}, {outputs.max().item():.4f}]")
+                        
+                        # Convert logits to probabilities
+                        probs = torch.sigmoid(outputs)
+                        print(f"Probability range: [{probs.min().item():.4f}, {probs.max().item():.4f}]")
+                        print("\nBatch details:")
+                        for i in range(len(outputs)):
+                            print(f"Sample {i}:")
+                            print(f"  Logit: {outputs[i].item():.4f}")
+                            print(f"  Probability: {probs[i].item():.4f}")
+                            print(f"  True Label: {batch_y[i].item()}")
+                            
                     # Check for NaN values
                     if torch.isnan(outputs).any():
                         print(f"NaN detected in outputs at epoch {epoch}, batch {batch_idx}")
