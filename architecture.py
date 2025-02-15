@@ -107,7 +107,6 @@ class Camull(nn.Module):
         self.fc1  = FCBlock(128, 10)
         self.fc2  = FCBlock(20, 4)
         self.lin  = nn.Linear(4, 1)
-        self.sig  = nn.Sigmoid()
 
 
     #Performing a grouped convolutional stack
@@ -155,7 +154,6 @@ class Camull(nn.Module):
 
         out       = self.fc2(out)
         out       = self.lin(out)
-        out       = self.sig(out)
         
         return out
 
@@ -193,14 +191,13 @@ class ImprovedCamull(nn.Module):
         
         # Final classification layers
         self.classifier = nn.Sequential(
-            nn.Linear(256 + 32, 64),  # 256 from MRI + 32 from clinical
+            nn.Linear(256 + 32, 64),
             nn.ReLU(),
             nn.Dropout(0.5),
             nn.Linear(64, 32),
             nn.ReLU(),
             nn.Dropout(0.3),
-            nn.Linear(32, 1),
-            nn.Sigmoid()
+            nn.Linear(32, 1)
         )
 
     def _calculate_conv_output_size(self):

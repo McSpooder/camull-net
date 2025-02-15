@@ -7,6 +7,8 @@ import torch
 import torch.nn    as nn
 import torch.optim as optim
 
+from collections import Counter
+
 from   sklearn.metrics   import roc_auc_score
 
 import enlighten
@@ -95,10 +97,14 @@ def start(device, ld_helper, epochs, model_uuid=None):
             fold_metrics = []
             best_val_auc = 0
             best_model_state = None
+
+            print("\nOverall Dataset Statistics:")
+            ld_helper.print_dataset_stats()
             
             for k_ind in range(k_folds):
                 print(f"\n=========== Training on Fold {k_ind + 1}/{k_folds} ===========")
-                
+                ld_helper.print_fold_stats(k_ind)
+
                 if model_cop is None:
                     model = build_arch()
                 else:
@@ -134,11 +140,30 @@ def start(device, ld_helper, epochs, model_uuid=None):
         print_cv_results(fold_metrics)
         
         folds_c.count = 0
-        return uuid_
+        return uuid
 
     def train_loop(model, train_dl, val_dl, epochs):
         '''Enhanced training loop with validation and metrics tracking'''
-        
+        # At the start of train_loop
+        # Add at the start of your train_loop function
+        log_file = open('training_log.txt', 'w')
+            # Then modify your print statements to also write to the file
+        def log_print(message):
+            print(message)
+            log_file.write(message + '\n')
+            log_file.flush()  # Make sure it's written immediately
+
+        train_label_dist = Counter([l.item() for batch in train_dl for l in batch['label']])
+        val_label_dist = Counter([l.item() for batch in val_dl for l in batch['label']])
+        print("\nClass distribution:")
+        print(f"Training set: {dict(train_label_dist)}")
+        print(f"Validation set: {dict(val_label_dist)}")
+        for batch in train_dl:
+            # Debug first batch
+            print("\nBatch structure:")
+            for k, v in batch.items():
+                print(f"{k}: {v.dtype}, shape: {v.shape}")
+            break
         epochs_c.total = epochs
         batches_c.total = len(train_dl)
         
@@ -146,8 +171,20 @@ def start(device, ld_helper, epochs, model_uuid=None):
         scheduler = optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, mode='max', factor=0.5, patience=5, verbose=True
         )
-        loss_function = nn.BCELoss()
+        n_samples = len(train_dl.dataset)
+        n_classes = 2  # NC and AD
         
+        # Calculate class weights
+        train_label_dist = Counter([l.item() for batch in train_dl for l in batch['label']])
+        class_counts = torch.tensor([train_label_dist[0], train_label_dist[1]], dtype=torch.float64)
+        class_weights = n_samples / (n_classes * class_counts)
+        class_weights = class_weights / class_weights.sum()  # Normalize weights
+        print(f"\nClass weights: {class_weights}")
+
+        # Create weighted loss function
+        pos_weight = (class_weights[1] / class_weights[0]).to(DEVICE)
+        loss_function = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+
         history = {
             'train_loss': [], 'val_loss': [],
             'train_auc': [], 'val_auc': [],
@@ -168,10 +205,23 @@ def start(device, ld_helper, epochs, model_uuid=None):
                     batch_xb = sample_batched['clin_t'].to(DEVICE)
                     batch_y = sample_batched['label'].to(DEVICE)
                     
+                    # Add this debug print in train_loop right after loading the batch
+                    print("\nBatch dimensions:")
+                    print(f"MRI batch: {batch_x.shape}")  # Should be [batch_size, 1, 110, 110, 110]
+                    print(f"Clinical batch: {batch_xb.shape}")  # Should be [batch_size, 21]
+                    print(f"Label batch: {batch_y.shape}")  # Should be [batch_size, 1]
                     # Forward pass
                     model.zero_grad()
                     outputs = model((batch_x, batch_xb))
-                    
+
+                    # Add this debug block for the first batch of the first epoch
+                    if epoch == 0 and batch_idx == 0:
+                        print("\nFirst forward pass results:")
+                        print(f"Output shape: {outputs.shape}")
+                        print(f"Output range: [{outputs.min().item():.4f}, {outputs.max().item():.4f}]")
+                        print(f"Batch predictions: {outputs.detach().cpu().numpy()}")
+                        print(f"Batch labels: {batch_y.cpu().numpy()}")
+
                     # Check for NaN values
                     if torch.isnan(outputs).any():
                         print(f"NaN detected in outputs at epoch {epoch}, batch {batch_idx}")
@@ -279,10 +329,10 @@ def start(device, ld_helper, epochs, model_uuid=None):
                 # Add scheduler step here, using validation AUC as the metric
                 scheduler.step(val_auc)  # This line was missing
                 # Print progress
-                print(f"Epoch: {epoch+1}/{epochs}")
-                print(f"Train Loss: {train_loss:.4f}, Train AUC: {train_auc:.4f}")
-                print(f"Val Loss: {val_loss:.4f}, Val AUC: {val_auc:.4f}")
-                print(f"Current LR: {optimizer.param_groups[0]['lr']:.6f}")
+                log_print(f"Epoch: {epoch+1}/{epochs}")
+                log_print(f"Train Loss: {train_loss:.4f}, Train AUC: {train_auc:.4f}")
+                log_print(f"Val Loss: {val_loss:.4f}, Val AUC: {val_auc:.4f}")
+                log_print(f"Current LR: {optimizer.param_groups[0]['lr']:.6f}")
                 
             except Exception as e:
                 print(f"Error calculating metrics: {str(e)}")

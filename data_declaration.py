@@ -119,35 +119,33 @@ class MRIDataset(Dataset):
         return self.len
 
     def __getitem__(self, idx):
-
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        repeat = True
+        try:
+            path = self.directories[idx]
+            im_id = get_im_id(path)
+            mri = get_mri(path)
+            clinical = get_clinical(im_id, self.clin_data)
+            label = get_label(path, self.labels)
 
-        while repeat:
-            try:
-                path = self.directories[idx]
-                im_id = get_im_id(path)
-                mri = get_mri(path)
-                clinical = get_clinical(im_id, self.clin_data)
-                label = get_label(path, self.labels)
+            sample = {'mri': mri, 'clinical':clinical, 'label':label}
+            
+            # Debug print before transform
+            print("Before transform:", sample.keys())
 
-                sample = {'mri': mri, 'clinical':clinical, 'label':label}
+            if self.transform:
+                sample = self.transform(sample)
+                # Debug print
+                print("\nTransformed sample types:")
+                for k, v in sample.items():
+                    print(f"{k}: {v.dtype}, shape: {v.shape}")
 
-                if self.transform:
-                    sample = self.transform(sample)
+            return sample
 
-                return sample
-
-            except IndexError as index_e:
-                print(index_e)
-                if idx < self.len:
-                    idx += 1
-                else:
-                    idx = 0
-
-        return sample
+        except Exception as e:
+            print(f"Error processing item {idx}: {str(e)}")
+            raise
 
 class ToTensor():
     '''Convert ndarrays in sample to Tensors with proper normalization and type'''
