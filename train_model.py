@@ -315,6 +315,9 @@ def start(device, ld_helper, epochs, model_uuid=None):
                 log_print(f"Train Loss: {train_loss:.4f}, Train AUC: {train_auc:.4f}")
                 log_print(f"Val Loss: {val_loss:.4f}, Val AUC: {val_auc:.4f}")
                 log_print(f"Current LR: {optimizer.param_groups[0]['lr']:.6f}")
+
+                if (epoch + 1) % 5 == 0:
+                    torch.save(model.state_dict(), f'model_checkpoint_epoch_{epoch+1}.pth')
                 
             except Exception as e:
                 print(f"Error calculating metrics: {str(e)}")
@@ -324,6 +327,7 @@ def start(device, ld_helper, epochs, model_uuid=None):
             
             batches_c.count = 0
             epochs_c.update()
+
 
         log_file.close()
         epochs_c.count = 0
