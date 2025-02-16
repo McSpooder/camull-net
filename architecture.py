@@ -12,25 +12,26 @@ def safe_std(tensor):
     return torch.tensor(0.0, device=tensor.device)
 
 class ConvBlock(nn.Module):
-    def __init__(self, c_in, c_out, ks, k_stride=1, dropout=0.1):  # Added dropout parameter
+    def __init__(self, c_in, c_out, ks, k_stride=1, dropout=0.1):
         super().__init__()
         self.conv1 = nn.Conv3d(c_in, c_out, ks, stride=k_stride, padding='same')
         self.bn = nn.BatchNorm3d(c_out)
+        # Move LayerNorm after pooling and make it adaptive to input size
         self.relu = nn.ReLU()
         self.pool = nn.MaxPool3d(kernel_size=2, stride=2)
-        self.dropout = nn.Dropout3d(p=dropout)  # Use the passed dropout value
-        
-        # Convert all parameters to float32
-        for param in self.parameters():
-            param.data = param.data.float()
+        # LayerNorm will be created in forward pass with correct dimensions
+        self.dropout = nn.Dropout3d(p=dropout)
 
     def forward(self, x):
-        out = self.conv1(x)
-        out = self.bn(out)
-        out = self.relu(out)
-        out = self.pool(out)
-        out = self.dropout(out)
-        return out
+        x = self.conv1(x)
+        x = self.bn(x)
+        x = self.relu(x)
+        x = self.pool(x)
+        # Create LayerNorm with correct dimensions
+        layer_norm = nn.LayerNorm([x.size(1), x.size(2), x.size(3), x.size(4)]).to(x.device)
+        x = layer_norm(x)
+        x = self.dropout(x)
+        return x
 
 
 
@@ -176,45 +177,76 @@ class ImprovedCamull(nn.Module):
         self.input_shape = (110, 110, 110)
         
         # MRI processing branch
+        # MRI processing branch with residual connections
         self.mri_encoder = nn.ModuleList([
-            ConvBlock(1, 32, (3,3,3), k_stride=1, dropout=dropout_rate),
-            ConvBlock(32, 64, (3,3,3), dropout=dropout_rate),
-            ConvBlock(64, 96, (3,3,3), dropout=dropout_rate)
+            nn.Sequential(
+                nn.Conv3d(1, 32, 3, padding=1),
+                nn.BatchNorm3d(32),
+                nn.ReLU(),
+                nn.Conv3d(32, 32, 3, padding=1),
+                nn.BatchNorm3d(32),
+                nn.ReLU(),
+                nn.MaxPool3d(2)
+            ),
+            nn.Sequential(
+                nn.Conv3d(32, 64, 3, padding=1),
+                nn.BatchNorm3d(64),
+                nn.ReLU(),
+                nn.Conv3d(64, 64, 3, padding=1),
+                nn.BatchNorm3d(64),
+                nn.ReLU(),
+                nn.MaxPool3d(2)
+            ),
+            nn.Sequential(
+                nn.Conv3d(64, 128, 3, padding=1),
+                nn.BatchNorm3d(128),
+                nn.ReLU(),
+                nn.Conv3d(128, 128, 3, padding=1),
+                nn.BatchNorm3d(128),
+                nn.ReLU(),
+                nn.MaxPool3d(2)
+            )
         ])
         
         # Calculate the size after convolutions
         self._calculate_conv_output_size()
         
         # Clinical data processing
+        # Wider clinical path
         self.clinical_encoder = nn.Sequential(
-            FCBlock(21, 32).float(),
-            FCBlock(32, 32).float()
-        )
-        
-        # Add a dimension reduction layer before fusion
-        self.dim_reduction = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(self.conv_output_size, 256),
-            nn.BatchNorm1d(256),
-            nn.ReLU(),
-            nn.Dropout(dropout_rate),
-            nn.Linear(256, 256),  # Additional layer with regularization
-            nn.BatchNorm1d(256),
-            nn.ReLU(),
-            nn.Dropout(dropout_rate)
-        )
-        
-        # More aggressive regularization in classifier
-        self.classifier = nn.Sequential(
-            nn.Linear(256 + 32, 64),
+            nn.Linear(21, 64),
             nn.BatchNorm1d(64),
             nn.ReLU(),
-            nn.Dropout(dropout_rate + 0.1),  # Higher dropout
             nn.Linear(64, 32),
             nn.BatchNorm1d(32),
             nn.ReLU(),
-            nn.Dropout(dropout_rate + 0.1),
-            nn.Linear(32, 1)
+        )
+        
+        self.clip_max = 5.0
+
+        # Add a dimension reduction layer before fusion
+        # Dimension reduction with skip connections
+        self.dim_reduction = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(self.conv_output_size, 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.Linear(512, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+        )
+        
+        # Modified classifier with better normalization
+        self.classifier = nn.Sequential(
+            nn.Linear(256 + 32, 128),
+            nn.BatchNorm1d(128),
+            nn.ReLU(),
+            nn.Dropout(dropout_rate),
+            nn.Linear(128, 64),
+            nn.BatchNorm1d(64),
+            nn.ReLU(),
+            nn.Dropout(dropout_rate),
+            nn.Linear(64, 1)
         )
         for param in self.parameters():
             param.data = param.data.float()
@@ -301,7 +333,7 @@ class ImprovedCamull(nn.Module):
         logging.info(f"FINAL OUTPUT")
         logging.info(f"Mean: {out.mean():.4f}")
         logging.info(f"Std: {safe_std(out):.4f}")
-        
+
         return out
 
 

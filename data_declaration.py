@@ -112,6 +112,11 @@ class MRIDataset(Dataset):
                 self.directories.append(pathlib.Path(path))
 
         self.len = len(self.directories)
+        
+        self.patient_ids = []
+        for path in self.directories:
+            patient_id = get_ptid(path)
+            self.patient_ids.append(patient_id)
 
     def __len__(self):
 

@@ -1,6 +1,6 @@
 '''The following module deals with creating the loader he'''
 import torch
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader, Subset, WeightedRandomSampler
 from torchvision import transforms
 from sklearn.model_selection import StratifiedKFold
 
@@ -8,7 +8,7 @@ import numpy as np
 
 from data_declaration import MRIDataset, Task, get_ptid
 from data_declaration import ToTensor
-
+from collections import defaultdict
 
 class LoaderHelper:
     '''An abstract class for assisting with dataset creation.'''
@@ -29,6 +29,19 @@ class LoaderHelper:
             ]))
         self.indices = []
         self.set_indices()
+
+    def print_split_stats(self, fold_idx):
+        """Print detailed statistics about the split"""
+        train_indices, val_indices = self.indices[fold_idx]
+        
+        # Get patient IDs
+        train_patients = set(get_ptid(self.dataset.directories[i]) for i in train_indices)
+        val_patients = set(get_ptid(self.dataset.directories[i]) for i in val_indices)
+        
+        print(f"\nFold {fold_idx} Patient Statistics:")
+        print(f"Training patients: {len(train_patients)}")
+        print(f"Validation patients: {len(val_patients)}")
+        print(f"Patient overlap: {len(train_patients & val_patients)}")  # Should be 0
 
     def print_dataset_stats(self):
         """Print distribution of classes in the dataset"""
@@ -131,79 +144,46 @@ class LoaderHelper:
 
 
     def set_indices(self, total_folds=5):
-        """Set indices using patient-level stratified k-fold"""
-        from sklearn.model_selection import StratifiedKFold
-        random_seed = 42
-
-        # Access directories from the dataset instance
-        directories = self.dataset.directories  # Make sure this attribute exists in MRIDataset
+        # Get patient IDs for each scan
+        patient_ids = [get_ptid(path) for path in self.dataset.directories]
+        unique_patients = list(set(patient_ids))
         
-        # First, group indices by patient
-        patient_groups = {}
-        for idx, path in enumerate(directories):
-            ptid = get_ptid(path)  # Use your existing get_ptid function
-            if ptid not in patient_groups:
-                patient_groups[ptid] = {
-                    'indices': [],
-                    'label': None
-                }
-            # Add this scan's index to the patient's group
-            patient_groups[ptid]['indices'].append(idx)
-            # Set the label if not already set
-            if patient_groups[ptid]['label'] is None:
-                sample = self.dataset[idx]
-                label = sample['label']
-                if isinstance(label, torch.Tensor):
-                    label = label.item()
-                patient_groups[ptid]['label'] = label
-
-        # Prepare patient-level data for stratification
-        patient_ids = list(patient_groups.keys())
-        patient_labels = [patient_groups[pid]['label'] for pid in patient_ids]
-
-        # Print dataset-level statistics
-        print("\nPatient-Level Class Distribution:")
-        unique_labels, counts = np.unique(patient_labels, return_counts=True)
-        for label, count in zip(unique_labels, counts):
-            print(f"Class {self.labels[int(label)]}: {count} patients ({count/len(patient_labels)*100:.2f}%)")
-
-        # Create stratified folds at patient level
-        skf = StratifiedKFold(n_splits=total_folds, shuffle=True, random_state=random_seed)
-        
-        self.indices = []
-        for train_idx, val_idx in skf.split(patient_ids, patient_labels):
-            # Convert patient-level splits to scan-level indices
-            train_patients = [patient_ids[i] for i in train_idx]
-            val_patients = [patient_ids[i] for i in val_idx]
+        # Create patient to indices mapping
+        patient_to_indices = defaultdict(list)
+        for idx, pid in enumerate(patient_ids):
+            patient_to_indices[pid].append(idx)
             
+        # Get one label per patient
+        patient_info = []
+        patient_labels = []  # Separate list just for labels
+        for pid in unique_patients:
+            idx = patient_to_indices[pid][0]
+            label = self.dataset[idx]['label']
+            if isinstance(label, torch.Tensor):
+                label = label.item()
+            n_scans = len(patient_to_indices[pid])
+            patient_info.append((pid, label, n_scans))
+            patient_labels.append(label)  # Add just the label
+        
+        # Sort by class and number of scans to ensure balanced splits
+        patient_info.sort(key=lambda x: (x[1], x[2]))
+        
+        # Split using only the labels
+        skf = StratifiedKFold(n_splits=total_folds, shuffle=True, random_state=42)
+        self.indices = []
+        
+        for train_idx, val_idx in skf.split(unique_patients, patient_labels):  # Use patient_labels here
+            train_patients = [unique_patients[i] for i in train_idx]
+            val_patients = [unique_patients[i] for i in val_idx]
+            
+            # Get all indices for each split
             train_indices = []
             val_indices = []
-            
-            # Get all scan indices for each patient
             for pid in train_patients:
-                train_indices.extend(patient_groups[pid]['indices'])
+                train_indices.extend(patient_to_indices[pid])
             for pid in val_patients:
-                val_indices.extend(patient_groups[pid]['indices'])
-
-            # Print fold statistics
-            print(f"\nFold Statistics:")
-            print(f"Training set: {len(train_patients)} patients, {len(train_indices)} scans")
-            print(f"Validation set: {len(val_patients)} patients, {len(val_indices)} scans")
-            
-            train_labels = [patient_groups[pid]['label'] for pid in train_patients]
-            val_labels = [patient_groups[pid]['label'] for pid in val_patients]
-            
-            # Print class distribution for this fold
-            print("Training set class distribution:")
-            train_unique, train_counts = np.unique(train_labels, return_counts=True)
-            for label, count in zip(train_unique, train_counts):
-                print(f"Class {self.labels[int(label)]}: {count} patients ({count/len(train_labels)*100:.2f}%)")
-            
-            print("Validation set class distribution:")
-            val_unique, val_counts = np.unique(val_labels, return_counts=True)
-            for label, count in zip(val_unique, val_counts):
-                print(f"Class {self.labels[int(label)]}: {count} patients ({count/len(val_labels)*100:.2f}%)")
-            
+                val_indices.extend(patient_to_indices[pid])
+                
             self.indices.append((train_indices, val_indices))
 
     def make_loaders(self, shuffle=True):
@@ -225,16 +205,22 @@ class LoaderHelper:
     
     def get_train_dl(self, fold_ind, shuffle=True):
         train_ds = Subset(self.dataset, self.indices[fold_ind][0])
-        train_dl = DataLoader(
-            train_ds, 
-            batch_size=4, 
-            shuffle=shuffle, 
+        
+        # Calculate sample weights
+        labels = [self.dataset[i]['label'].item() for i in self.indices[fold_ind][0]]
+        class_counts = np.bincount([int(l) for l in labels])
+        weights = 1.0 / class_counts[[int(l) for l in labels]]
+        sampler = WeightedRandomSampler(weights, len(weights))
+        
+        return DataLoader(
+            train_ds,
+            batch_size=4,
+            sampler=sampler,  # Use weighted sampler instead of shuffle
             num_workers=4,
             drop_last=True,
             multiprocessing_context='spawn',
             persistent_workers=True
         )
-        return train_dl
 
     def get_val_dl(self, fold_ind, shuffle=True):
         val_ds = Subset(self.dataset, self.indices[fold_ind][1])

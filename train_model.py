@@ -1,5 +1,5 @@
 '''The following module trains the weights of the neural network model.'''
-
+import traceback
 import glob
 from data_declaration import Task
 from architecture     import load_cam_model, Camull, ImprovedCamull
@@ -13,6 +13,7 @@ from collections import Counter
 from   sklearn.metrics   import roc_auc_score
 
 import enlighten
+import logging
 from tqdm.auto import tqdm
 
 import copy
@@ -47,7 +48,21 @@ class EarlyStopping:
             self.counter = 0
 
 def start(device, ld_helper, epochs, model_uuid=None):
-        
+    
+    def smooth_labels(labels, smoothing=0.1):
+        """Apply label smoothing to binary labels"""
+        return labels * (1 - smoothing) + smoothing * 0.5
+
+    def log_metrics(train_loss, train_auc, val_loss, val_auc, lr, uuid, epoch, fold):
+        """Log training metrics to a separate file with model identification"""
+        with open('training_metrics.log', 'a') as f:
+            f.write(f"\n{'='*50}\n")
+            f.write(f"Model UUID: {uuid}\n")
+            f.write(f"Fold: {fold}, Epoch: {epoch}\n")
+            f.write(f"Train Loss: {train_loss:.4f}, Train AUC: {train_auc:.4f}\n")
+            f.write(f"Val Loss: {val_loss:.4f}, Val AUC: {val_auc:.4f}\n")
+            f.write(f"Learning Rate: {lr:.6f}\n")
+
     def load_model(arch, model_uuid=None):
         '''Function for loaded camull net from a specified weights path'''
         if arch == "camull": #must be camull
@@ -61,26 +76,29 @@ def start(device, ld_helper, epochs, model_uuid=None):
         return model
 
     def save_weights(model_in, uuid_arg, fold=1, task: Task = None):
-        '''The following function saves the weights file into required folder'''
-        if sys.platform.__str__() == 'linux':
-            root_path = "../weights/" + task.__str__() + "/" + uuid_arg + "/"
-        else: #windows
-            root_path = "..\\weights\\" + task.__str__() + "\\" + uuid_arg + "\\"
+        try:
+            if sys.platform.__str__() == 'linux':
+                root_path = "../weights/" + task.__str__() + "/" + uuid_arg + "/"
+            else: #windows
+                root_path = "..\\weights\\" + task.__str__() + "\\" + uuid_arg + "\\"
 
-        if fold == 1: 
-            os.makedirs(root_path, exist_ok=True)
+            if fold == 1: 
+                os.makedirs(root_path, exist_ok=True)
 
-        while True:
-            s_path = root_path + "fold_{}_weights-{date:%Y-%m-%d_%H-%M-%S}.pt".format(
-                fold, date=datetime.datetime.now()
-            )
+            s_path = root_path + f"fold_{fold}_weights-{datetime.datetime.now():%Y-%m-%d_%H-%M-%S}.pt"
+            
+            # Set model to eval mode before saving
+            model_in.eval()
+            torch.save(model_in.state_dict(), s_path)
+            # Return to training mode if needed
+            model_in.train()
+            
+            print(f"Successfully saved weights to {s_path}")
 
-            if os.path.exists(s_path):
-                print("Path exists. Choosing another path.")
-            else:
-                # Save only the state dict instead of the whole model
-                torch.save(model_in.state_dict(), s_path)
-                break
+        except Exception as e:
+            print(f"Error saving weights: {str(e)}")
+            traceback.print_exc()
+            raise
 
 
     def build_arch():
@@ -119,7 +137,7 @@ def start(device, ld_helper, epochs, model_uuid=None):
             for k_ind in range(k_folds):
                 print(f"\n=========== Training on Fold {k_ind + 1}/{k_folds} ===========")
                 ld_helper.print_fold_stats(k_ind)
-
+                ld_helper.print_split_stats(k_ind)
                 if model_cop is None:
                     model = build_arch()
                 else:
@@ -129,7 +147,14 @@ def start(device, ld_helper, epochs, model_uuid=None):
                 val_dl = ld_helper.get_val_dl(k_ind)
                 
                 print(f"Starting train_loop with epochs={epochs}")
-                fold_history = train_loop(model, train_dl, val_dl, epochs)
+                fold_history = train_loop(
+                    model, 
+                    train_dl, 
+                    val_dl, 
+                    epochs=epochs,
+                    uuid=uuid_,
+                    fold=k_ind+1
+                )
                 fold_metrics.append(fold_history)
                 
                 # Save if best model
@@ -172,6 +197,7 @@ def start(device, ld_helper, epochs, model_uuid=None):
         
         # Setup optimizer and loss
         optimizer = setup_optimizer(model)
+
         loss_function = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
         
         return log_file, optimizer, loss_function
@@ -182,12 +208,18 @@ def start(device, ld_helper, epochs, model_uuid=None):
             'train_loss': [], 'val_loss': [],
             'train_auc': [], 'val_auc': [],
             'best_val_auc': 0,
-            'best_epoch': 0
+            'best_epoch': 0,
+            'learning_rates': []  # Add this
         }
 
     def setup_optimizer(model):
         """Setup optimizer with proper settings"""
-        optimizer = optim.Adam(model.parameters(), lr=0.0005, weight_decay=1e-4)
+        optimizer = optim.AdamW(  # Use AdamW
+            model.parameters(),
+            lr=0.0001,
+            weight_decay=1e-4,
+            betas=(0.9, 0.999)
+        )
         for state in optimizer.state.values():
             for k, v in state.items():
                 if isinstance(v, torch.Tensor):
@@ -195,7 +227,7 @@ def start(device, ld_helper, epochs, model_uuid=None):
         return optimizer
     
     def update_metrics(history, train_losses, train_preds, train_labels, 
-                  val_losses, val_preds, val_labels):
+                  val_losses, val_preds, val_labels, optimizer):
         """Calculate and update metrics for both training and validation"""
         metrics = {}
         
@@ -230,11 +262,13 @@ def start(device, ld_helper, epochs, model_uuid=None):
         # Update history
         for key in ['train_loss', 'val_loss', 'train_auc', 'val_auc']:
             history[key].append(metrics[key])
-        
+
+        current_lr = optimizer.param_groups[0]['lr']
+        history['learning_rates'].append(current_lr)
+        metrics['lr'] = current_lr
         # Print metrics
         print(f"Train Loss: {metrics['train_loss']:.4f}, Train AUC: {metrics['train_auc']:.4f}")
         print(f"Val Loss: {metrics['val_loss']:.4f}, Val AUC: {metrics['val_auc']:.4f}")
-        
         return metrics
     
     def save_checkpoint(model, metrics, epoch, history, fold):
@@ -255,13 +289,28 @@ def start(device, ld_helper, epochs, model_uuid=None):
         
         for batch_idx, sample_batched in enumerate(train_dl):
             try:
-                loss, outputs, batch_y = process_batch(
-                    model, sample_batched, loss_function, optimizer, is_training=True
-                )
+                batch_x = sample_batched['mri'].to(DEVICE)
+                batch_xb = sample_batched['clin_t'].to(DEVICE)
+                batch_y = sample_batched['label'].to(DEVICE)
+                
+                # Apply label smoothing
+                smoothed_y = smooth_labels(batch_y)
+                
+                model.zero_grad()
+                outputs = model((batch_x, batch_xb))
+                loss = loss_function(outputs, smoothed_y)  # Use smoothed labels
+                
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)  # Using 1.0 as clip value
+
+                optimizer.step()
+                
                 train_losses.append(loss.item())
                 train_preds.extend(outputs.detach().cpu().numpy())
-                train_labels.extend(batch_y.cpu().numpy())
+                train_labels.extend(batch_y.cpu().numpy())  # Keep original labels for metrics
+                
                 batches_c.update()
+                
             except Exception as e:
                 print(f"Error in training batch {batch_idx}: {str(e)}")
                 continue
@@ -306,7 +355,7 @@ def start(device, ld_helper, epochs, model_uuid=None):
         
         return loss, outputs, batch_y
 
-    def train_loop(model, train_dl, val_dl, epochs=40):
+    def train_loop(model, train_dl, val_dl, epochs=40, uuid=None, fold=None):
         """Main training loop"""
         log_file, optimizer, loss_function = setup_training(model, train_dl, epochs)
         scheduler = ReduceLROnPlateau(optimizer, mode='max', factor=0.5, patience=3, verbose=True)
@@ -327,7 +376,18 @@ def start(device, ld_helper, epochs, model_uuid=None):
             # Update metrics and check early stopping
             metrics = update_metrics(
                 history, train_losses, train_preds, train_labels,
-                val_losses, val_preds, val_labels
+                val_losses, val_preds, val_labels, optimizer
+            )
+            
+            log_metrics(
+                train_loss=metrics['train_loss'],
+                train_auc=metrics['train_auc'],
+                val_loss=metrics['val_loss'],
+                val_auc=metrics['val_auc'],
+                lr=optimizer.param_groups[0]['lr'],
+                uuid=uuid,  # Add this
+                epoch=epoch,  # Add this
+                fold=fold  # Add this
             )
             
             early_stopping(metrics['val_auc'])
