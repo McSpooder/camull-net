@@ -393,6 +393,9 @@ def start(device, ld_helper, epochs, model_uuid=None):
             early_stopping(metrics['val_auc'])
             if early_stopping.early_stop:
                 print(f"Early stopping triggered at epoch {epoch+1}")
+                epochs_c.count = 0
+                batches_c.count = 0
+                folds_c.count = fold + 1  # Update to next fold
                 break
             
             # Save best model and update scheduler
